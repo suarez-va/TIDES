@@ -22,7 +22,7 @@ class rt_scf:
         self.fragments = []
         self.ovlp = self._scf.get_ovlp()
         self.bfield = False
-        self.delta_field = False
+        self.efield = []
         self.magnus_tolerance = 1e-7
         if prop is None: self.prop = "magnus_interpol"
         if orth is None: self.orth = scf.addons.canonical_orth_(self.ovlp)
@@ -36,32 +36,32 @@ class rt_scf:
         occ_beta = np.concatenate((np.ones(nelec_beta), np.zeros(nmo-nelec_beta)))
 
         # Determine number of matrices: 1 for closed shell/generalized, 2 for open shell
-        match mf:
-            case dft.rks.RKS() | scf.rhf.RHF():
-                self.nmat = 1
-                self.occ = occ_alpha + occ_beta
-            case dft.uks.UKS() | scf.uhf.UHF():
-                self.nmat = 2
-                self.occ = np.stack((occ_alpha,occ_beta))
-            case dft.gks.GKS() | scf.ghf.GHF():
-                self.mag = True
-                self.nmat = 1
-                self.occ = np.concatenate((np.ones(nelec_alpha+nelec_beta), np.zeros(2*nmo-nelec_alpha-nelec_beta)))
-            case _:
-                raise Exception('unknown scf method')
+        if mf.istype('RKS') | mf.istype('RHF'):
+            self.nmat = 1
+            self.occ = occ_alpha + occ_beta
+        elif mf.istype('UKS') | mf.istype('UHF'):
+            self.nmat = 2
+            self.occ = np.stack((occ_alpha,occ_beta))
+        elif mf.istype('GKS') | mf.istype('GHF'):
+            self.mag = True
+            self.nmat = 1
+            self.occ = np.concatenate((np.ones(nelec_alpha+nelec_beta), np.zeros(2*nmo-nelec_alpha-nelec_beta)))
+        else:
+            raise Exception('unknown scf method')
 
         if self.nmat == 1:
             self.dim = np.array([nmo, nmo])
         else:
             self.dim = np.array([self.nmat, nmo, nmo])
 
+    def apply_efield(self, field):
+        self.efield.append(field)
 
     def get_fock_orth(self, den_ao):
 
         fock = self._scf.get_fock(h1e=self.hcore, dm=den_ao)
 
-        if self.delta_field and self.t == 0:
-            fock = rt_vapp.delta_field(self, fock)
+        fock = rt_vapp.applyfield(self, fock)
 
         if self.CAP:
             if self.nmat == 1:

@@ -2,6 +2,7 @@ import numpy as np
 from pyscf import gto, scf, dft
 import rt_scf
 import rt_spec
+from rt_vapp import electric_field
 
 mol = gto.M(
 	verbose = 0,
@@ -19,7 +20,9 @@ mf.kernel()
 
 rt_mf = rt_scf.rt_scf(mf, 0.2, 1, 1000, 'water_abs')
 
-rt_mf.delta_field = [0.0001,0.0001,0.0001]
+delta_field = electric_field('delta', [0.0001, 0.0001, 0.0001])
+
+rt_mf.apply_efield(delta_field)
 rt_mf.prop = 'magnus_interpol'
 
 rt_mf.kernel()
