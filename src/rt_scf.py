@@ -9,7 +9,7 @@ Real-time SCF main driver
 '''
 
 class rt_scf:
-    def __init__(self, mf, timestep, frequency, total_steps, filename, CAP = None, prop=None, orth=None):
+    def __init__(self, mf, timestep, frequency, total_steps, filename, prop=None, orth=None):
         self.timestep = timestep
         self.frequency = frequency
         self.total_steps = total_steps
@@ -22,7 +22,6 @@ class rt_scf:
         self.magnus_tolerance = 1e-7
         self.magnus_itmax = 15
         self.tdip = self._scf.mol.intor('int1e_r', comp=3)
-        self.CAP = CAP
         if prop is None: self.prop = "magnus_interpol"
         if orth is None: self.orth = scf.addons.canonical_orth_(self.ovlp)
 
