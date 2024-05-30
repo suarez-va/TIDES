@@ -1,7 +1,6 @@
 import numpy as np
 from numpy.fft import fft
 from pyscf import lib
-import math
 
 '''
 Real-time SCF spectra
@@ -60,7 +59,7 @@ def abs_spec(rt_mf, kick_str=1, pad=None, damp=None, preprocess_zero=True):
     n = len(dipolex_t)
     dt = time[1] - time[0]              # Assumes constant timestep
     period = (n-1) * dt - time[0]
-    dw = 2.0 * math.pi / period
+    dw = 2.0 * np.pi / period
 
     m = int(n / 2)                      # Include only positive frequencies
     wmin = 0.0
@@ -74,7 +73,7 @@ def abs_spec(rt_mf, kick_str=1, pad=None, damp=None, preprocess_zero=True):
     im_dipole_f = np.imag(dipolex_f) + np.imag(dipoley_f) + np.imag(dipolez_f)
     im_dipole_f = im_dipole_f[:m]
 
-    osc_str = (4 * math.pi) / (3 * c * kick_str) * w * im_dipole_f
+    osc_str = (4 * np.pi) / (3 * c * kick_str) * w * im_dipole_f
 
     abs_vs_freq = np.transpose([w,osc_str])
     np.savetxt(rt_mf.filename + "_abs_vs_freq.txt", abs_vs_freq)

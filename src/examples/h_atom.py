@@ -2,6 +2,7 @@ import numpy as np
 from pyscf import gto, scf, dft
 import rt_scf
 import rt_vapp
+from staticfield import static_bfield
 
 mag_z = 0.000085 # in au
 
@@ -14,10 +15,9 @@ mol = gto.M(
 mf = scf.ghf.GHF(mol)
 mf.kernel()
 
-rt_mf = rt_scf.rt_scf(mf, 0.05, 50000, 2080000, 'h_atom')
+static_bfield(mf, [0,0,mag_z])
+rt_mf = rt_scf.rt_scf(mf, 20, 1, 10000, 'h_atom')
 
-rt_mf.bfield = [0,0, mag_z]
-
-rt_mf.prop = 'magnus_step'
+rt_mf.prop = 'magnus_interpol'
 
 rt_mf.kernel()

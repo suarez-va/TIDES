@@ -50,4 +50,4 @@ rt_mf = rt_scf.rt_scf(dimer,1,1,200,"Li")
 rt_utils.input_fragments(rt_mf,range(0,1),range(1,2))
 
 
-rt_mf.kernel(mo_coeff_print=noscf_orbitals)
+rt_mf.kernel()
