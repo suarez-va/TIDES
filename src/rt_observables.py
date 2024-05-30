@@ -28,7 +28,7 @@ def get_observables(rt_mf, t, mo_coeff_print):
     rt_output.update_output_file(rt_mf, t, ener_tot, dipole, den_mo, charge, mag)
 
 def get_energy(rt_mf, den_ao):
-    return rt_mf._scf.energy_tot(dm = den_ao)
+    return rt_mf._scf.energy_tot(dm=den_ao)
 
 def get_charge(rt_mf, den_ao):
     # charge = tr(PaoS)
