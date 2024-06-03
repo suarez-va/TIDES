@@ -22,8 +22,7 @@ rt_mf = rt_scf.rt_scf(mf, 0.2, 1, 1000, 'water_abs')
 
 delta_field = electric_field('delta', [0.0001, 0.0001, 0.0001])
 
-rt_mf.add_field(delta_field)
-rt_mf.prop = 'magnus_interpol'
+rt_mf.add_potential(delta_field)
 
 rt_mf.kernel()
 

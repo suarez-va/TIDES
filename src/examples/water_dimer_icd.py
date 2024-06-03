@@ -43,9 +43,9 @@ water2.kernel()
 noscf_orbitals = basis_utils.noscfbasis(dimer, water1, water2)
 
 rt_water = rt_scf.rt_scf(dimer,1,1,1500,"H2OH2O")
-#rt_water.prop = 'magnus_step'
+rt_water.prop = 'magnus_step'
 CAP = mocap(0.5, 0.0477, 1.0, 10.0, dimer.get_ovlp())
-rt_water.add_field(CAP)
+rt_water.add_potential(CAP)
 
 rt_utils.excite(rt_water, 4)
 rt_utils.input_fragments(rt_water, range(0,3),range(3,6))

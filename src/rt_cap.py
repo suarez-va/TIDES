@@ -21,7 +21,7 @@ class mocap:
         self.y_orth = np.dot(np.diag(normlz), self.y_orth)
 
     def calculate_potential(self, rt_mf):
-        if len(rt_mf.dim) == 1:
+        if rt_mf.nmat == 1:
             return self.calc_cap(rt_mf, rt_mf.fock[0])
         else:
             return np.stack((self.calc_cap(rt_mf, rt_mf.fock[0]), self.calc_cap(rt_mf, rt_mf.fock[1])))
