@@ -1,70 +1,92 @@
 import numpy as np
 import rt_output
+
 '''
-Real-time SCF observables
+Real-time SCF Observable Functions
 '''
 
+def init_observables(rt_mf):
+    rt_mf.observables = {
+        'energy'  : False,
+        'charge'  : False,
+        'dipole'  : False,
+        'mag'     : False,
+        'mo_occ'  : False,
+    }
 
-def get_observables(rt_mf, t, mo_coeff_print):
-    ener_tot = get_energy(rt_mf, rt_mf.den_ao)
+    rt_mf.observables_functions = {
+        'energy'  : [get_energy, rt_output.print_energy],
+        'charge'  : [get_charge, rt_output.print_charge],
+        'dipole'  : [get_dipole, rt_output.print_dipole],
+        'mag'     : [get_mag, rt_output.print_mag],
+        'mo_occ'  : [get_den_mo, rt_output.print_mo_occ],
+    }
 
-    dipole = get_dipole(rt_mf, rt_mf.den_ao)
-    if rt_mf.nmat == 1:
-        den_mo = get_den_mo(rt_mf, rt_mf.den_ao, mo_coeff_print)
+    rt_mf.observables_values = {
+        'energy'  : None,
+        'charge'  : None,
+        'dipole'  : None,
+        'mag'     : None,
+        'mo_occ'  : None,
+    }
 
-        charge = get_charge(rt_mf, rt_mf.den_ao)
-    else:
-        den_mo_alpha = get_den_mo(rt_mf, rt_mf.den_ao[0], mo_coeff_print[0])
-        den_mo_beta = get_den_mo(rt_mf, rt_mf.den_ao[1], mo_coeff_print[1])
-        den_mo = den_mo_alpha + den_mo_beta
+def prepare_observables(rt_mf):
+    for key, print_value in rt_mf.observables.items():
+        if not print_value:
+            del rt_mf.observables_functions[key]
+            del rt_mf.observables_values[key]
 
-        charge = get_charge(rt_mf, (rt_mf.den_ao[0]+rt_mf.den_ao[1]))
+def get_observables(rt_mf, mo_coeff_print):
+    for key, function in rt_mf.observables_functions.items():
+          rt_mf.observables_values[key] = function[0](rt_mf, rt_mf.den_ao, mo_coeff_print)
 
-    if rt_mf.mag:
-        mag = get_magnetization(rt_mf)
-    else:
-        mag = None
+    rt_output.update_output_file(rt_mf)
 
-    rt_output.update_output_file(rt_mf, t, ener_tot, dipole, den_mo, charge, mag)
-
-def get_energy(rt_mf, den_ao):
+def get_energy(rt_mf, den_ao, *args):
     return rt_mf._scf.energy_tot(dm=den_ao)
 
-def get_charge(rt_mf, den_ao):
+def get_charge(rt_mf, den_ao, *args):
     # charge = tr(PaoS)
     charge = []
-    charge.append(np.trace(np.dot(den_ao,rt_mf.ovlp)))
-
-    for index, mask in enumerate(rt_mf.fragments):
-        charge.append(np.trace(np.dot(den_ao,rt_mf.ovlp) * mask))
-
+    if rt_mf.nmat == 2:
+        charge.append(np.trace(np.sum(np.matmul(den_ao,rt_mf.ovlp), axis=0)))
+        for index, mask in enumerate(rt_mf.fragments):
+            charge.append(np.trace(np.sum(np.matmul(den_ao,rt_mf.ovlp) * mask, axis=0)))
+    else:
+        charge.append(np.trace(np.matmul(den_ao,rt_mf.ovlp)))
+        for index, mask in enumerate(rt_mf.fragments):
+            charge.append(np.trace(np.matmul(den_ao,rt_mf.ovlp) * mask))
     return charge
 
-def get_den_mo(rt_mf, den_ao, mo_coeff_print):
+def get_den_mo(rt_mf, den_ao, mo_coeff_print, *args):
     # P_mo = C+SP_aoSC
 
-    SP_aoS = np.dot(rt_mf.ovlp,np.dot(den_ao,rt_mf.ovlp))
-    den_mo = np.dot(mo_coeff_print.T,np.dot(SP_aoS,mo_coeff_print))
-    return np.real(den_mo)
+    SP_aoS = np.matmul(rt_mf.ovlp,np.matmul(den_ao,rt_mf.ovlp))
+    if rt_mf.nmat == 2:
+        mo_coeff_print_transpose = np.stack((mo_coeff_print[0].T, mo_coeff_print[1].T))
+        den_mo = np.matmul(mo_coeff_print_transpose,np.matmul(SP_aoS,mo_coeff_print))
+        return np.real(np.sum(den_mo,axis=0))
+    else:
+        den_mo = np.matmul(mo_coeff_print.T, np.matmul(SP_aoS,mo_coeff_print))
+        return np.real(den_mo)
 
-def get_dipole(rt_mf, den_ao):
-
-    dipole = rt_mf._scf.dip_moment(rt_mf._scf.mol, den_ao, 'A.U.', 1)
+def get_dipole(rt_mf, den_ao, *args):
+    dipole = rt_mf._scf.dip_moment(rt_mf._scf.mol, rt_mf.den_ao,'A.U.', 1)
     return dipole
 
-def get_magnetization(rt_mf):
+def get_mag(rt_mf, den_ao, *args):
     mag = [0,0,0]
 
     Nsp = int(np.shape(rt_mf.ovlp)[0] / 2)
     for k in range(0, Nsp):
         for j in range(0, Nsp):
-            ab_add = rt_mf.den_ao[:Nsp, Nsp:][k,j] + rt_mf.den_ao[Nsp:, :Nsp][k,j]
+            ab_add = den_ao[:Nsp, Nsp:][k,j] + den_ao[Nsp:, :Nsp][k,j]
             mag[0] += ab_add * rt_mf.ovlp[k,j]
 
-            ab_sub = rt_mf.den_ao[:Nsp, Nsp:][k,j] - rt_mf.den_ao[Nsp:, :Nsp][k,j]
+            ab_sub = den_ao[:Nsp, Nsp:][k,j] - den_ao[Nsp:, :Nsp][k,j]
             mag[1] += 1j * ab_sub * rt_mf.ovlp[k,j]
 
-            aa_bb = rt_mf.den_ao[:Nsp, :Nsp][k,j] - rt_mf.den_ao[Nsp:, Nsp:][k,j]
+            aa_bb = den_ao[:Nsp, :Nsp][k,j] - den_ao[Nsp:, Nsp:][k,j]
             mag[2] += aa_bb * rt_mf.ovlp[k,j]
 
     return mag

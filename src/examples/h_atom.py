@@ -17,6 +17,6 @@ mf.kernel()
 
 static_bfield(mf, [0,0,mag_z])
 rt_mf = rt_scf.rt_scf(mf, 20, 1, 10000, 'h_atom')
-
+rt_mf.observables.update(mag=True)
 
 rt_mf.kernel()
