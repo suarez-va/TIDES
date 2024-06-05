@@ -4,11 +4,11 @@ import numpy as np
 Real-time SCF Time-Dependent Applied Potential (Sample Electric Field)
 '''
 
-class electric_field:
-    def __init__(self, field_type=None, amplitude=[0,0,0], center=0, frequency=0, width=0, phase=0):
+class ElectricField:
+    def __init__(self, field_type=None, amplitude=[0,0,0], center=0,
+                frequency=0, width=0, phase=0):
 
         # Some attributes are irrelevant depending on field type
-
         self.field_type = field_type
         self.amplitude = np.array(amplitude)
         self.center = center
@@ -20,10 +20,14 @@ class electric_field:
         return self.amplitude
 
     def gaussian_energy(self, rt_mf):
-        return self.amplitude * ((np.exp(-1 * (rt_mf.t - self.center) ** 2 / (2 * self.width ** 2))) * np.sin(self.frequency * rt_mf.t + self.phase))
+        return self.amplitude * ((np.exp(-1 * (rt_mf.t - self.center) ** 2 / \
+        (2 * self.width ** 2))) * np.sin(self.frequency * rt_mf.t
+                                        + self.phase))
 
     def hann_energy(self, rt_mf):
-        return self.amplitude * ((np.sin(np.pi / self.width * (rt_mf.t - self.center - self.width / 2))) ** 2 * np.sin(self.frequency * rt_mf.t + self.phase))
+        return self.amplitude * ((np.sin(np.pi / self.width * \
+        (rt_mf.t - self.center - self.width / 2))) ** 2 * \
+        np.sin(self.frequency * rt_mf.t + self.phase))
 
     def resonant_energy(self, rt_mf):
         return self.amplitude * np.sin(self.frequency * rt_mf.t + self.phase)

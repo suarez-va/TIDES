@@ -1,11 +1,11 @@
 import numpy as np
 
 '''
-Real-time SCF molecular orbital complex absorbing potential (CAP)
+Real-time SCF Molecular Orbital Complex Absorbing Potential (CAP)
 '''
 
 
-class mocap:
+class MOCAP:
     def __init__(self, expconst, emin, prefac, maxval, ovlp, thr=1e-7):
         self.expconst = expconst
         self.emin = emin
@@ -24,7 +24,8 @@ class mocap:
         if rt_mf.nmat == 1:
             return self.calc_cap(rt_mf, rt_mf.fock[0])
         else:
-            return np.stack((self.calc_cap(rt_mf, rt_mf.fock[0]), self.calc_cap(rt_mf, rt_mf.fock[1])))
+            return np.stack((self.calc_cap(rt_mf, rt_mf.fock[0]),
+                            self.calc_cap(rt_mf, rt_mf.fock[1])))
 
     def calc_cap(self, rt_mf, fock):
         # Construct fock_orth without CAP
@@ -41,7 +42,8 @@ class mocap:
             energy_corrected = energy - self.emin
 
             if energy_corrected > 0:
-                damping_term = self.prefac * (1 - np.exp(self.expconst* energy_corrected))
+                damping_term = self.prefac * \
+                (1 - np.exp(self.expconst* energy_corrected))
                 if damping_term < (-1 * self.maxval):
                     damping_term = -1 * self.maxval
                 damping_diagonal.append(damping_term)
@@ -55,5 +57,6 @@ class mocap:
         damping_matrix = np.dot(mo_orth, np.dot(damping_matrix,mo_orth.T))
 
         # Rotate back to ao basis
-        damping_matrix_ao = np.dot(self.y_orth, np.dot(damping_matrix, self.y_orth.T))
+        damping_matrix_ao = np.dot(self.y_orth, \
+        np.dot(damping_matrix, self.y_orth.T))
         return 1j * damping_matrix_ao

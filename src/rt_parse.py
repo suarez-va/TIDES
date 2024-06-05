@@ -61,14 +61,16 @@ def parse_dipole(output_lines):
     dipole = []
     for line in output_lines:
         if 'Dipole Moment [X, Y, Z] (AU):' in line:
-            dipole.append(np.array(line.split(':')[1].strip()[1:-1].split()).astype(float))
+            dipole.append(np.array(line.split(':')[1].strip()[1:-1].split()) \
+            .astype(float))
     return np.array(dipole)
 
 def parse_mag(output_lines):
     mag = []
     for line in output_lines:
         if 'Magnetization [X, Y, Z]' in line:
-            mag.append(np.array(line.split(':')[1].strip()[1:-1].split()).astype(float))
+            mag.append(np.array(line.split(':')[1].strip()[1:-1].split()) \
+            .astype(float))
     return np.array(mag)
 
 def parse_mo_occ(output_lines):
@@ -77,12 +79,14 @@ def parse_mo_occ(output_lines):
         if 'Molecular Orbital Occupations:' in line:
             all_mo_found = False
             moiter = 1
-            extended_line = line
+            ext_line = line
             while not all_mo_found:
                 if '=' not in output_lines[index + moiter]:
-                    extended_line = " ".join((extended_line, output_lines[index + moiter]))
+                    ext_line = " ".join((ext_line,
+                                            output_lines[index + moiter]))
                 else:
                     all_mo_found = True
                 moiter += 1
-            mo_occ.append(np.array(extended_line.split(':')[1].strip()[1:-1].split()).astype(float))
+            current_mo_occ = ext_line.split(':')[1].strip()[1:-1].split()
+            mo_occ.append(np.array(current_mo_occ).astype(float))
     return np.array(mo_occ)

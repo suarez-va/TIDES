@@ -5,11 +5,13 @@ import rt_observables
 import rt_output
 
 '''
-Real-time SCF main driver
+Real-time SCF Main Driver
 '''
 
-class rt_scf:
-    def __init__(self, mf, timestep, frequency, total_steps, filename, prop=None, orth=None):
+class RT_SCF:
+    def __init__(self, mf, timestep, frequency, total_steps,
+                filename, prop=None, orth=None):
+
         self.timestep = timestep
         self.frequency = frequency
         self.total_steps = total_steps
@@ -21,7 +23,6 @@ class rt_scf:
         self.potential = []
         if prop is None: self.prop = "magnus_interpol"
         if orth is None: self.orth = scf.addons.canonical_orth_(self.ovlp)
-
         if mf.istype('UKS') | mf.istype('UHF'):
             self.nmat = 2
         else:
@@ -37,12 +38,12 @@ class rt_scf:
         return np.matmul(self.orth.T, np.matmul(self.fock, self.orth))
 
     def add_potential(self, *args):
-        for v_external in args:
-            self.potential.append(v_external)
+        for v_ext in args:
+            self.potential.append(v_ext)
 
     def applypotential(self):
-        for v_external in self.potential:
-            self.fock = np.add(self.fock, v_external.calculate_potential(self))
+        for v_ext in self.potential:
+            self.fock = np.add(self.fock, v_ext.calculate_potential(self))
 
     def kernel(self, mo_coeff_print=None):
         rt_output.create_output_file(self)

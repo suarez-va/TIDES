@@ -4,7 +4,7 @@ from pyscf.lo.orth import orth_ao
 import scipy
 
 '''
-Basis utility functions
+Basis Utility Functions
 '''
 
 def print2molden(mf, filename=None, mo_coeff=None):
@@ -17,9 +17,11 @@ def print2molden(mf, filename=None, mo_coeff=None):
                                  ene=mf.mo_energy, occ=mf.mo_occ)
         else:
             molden.orbital_coeff(mf.mol, moldenfile, mo_coeff[0],
-                                 ene=mf.mo_energy[0], occ=mf.mo_occ[0], spin = 'Alpha')
+                                 ene=mf.mo_energy[0], occ=mf.mo_occ[0],
+                                 spin = 'Alpha')
             molden.orbital_coeff(mf.mol, moldenfile, mo_coeff[1],
-                                 ene=mf.mo_energy[1], occ=mf.mo_occ[1], spin = 'Beta')
+                                 ene=mf.mo_energy[1], occ=mf.mo_occ[1],
+                                 spin = 'Beta')
 
 
 def noscfbasis(mf, *fragments):
@@ -38,7 +40,8 @@ def noscfbasis(mf, *fragments):
             orb_end = occ_per_frag + orb_iteration
             ao_start = ao_iteration
             ao_end = ao_per_frag + ao_iteration
-            noscf_orbitals[ao_start:ao_end,orb_start:orb_end] = frag.mo_coeff[:,:occ_per_frag]
+            noscf_orbitals[ao_start:ao_end,orb_start:orb_end] \
+            = frag.mo_coeff[:,:occ_per_frag]
             orb_iteration += occ_per_frag
             ao_iteration += ao_per_frag
 
@@ -54,7 +57,8 @@ def noscfbasis(mf, *fragments):
             orb_end = orb_start + (ao_per_frag - occ_per_frag)
             ao_start = 0 + ao_iteration
             ao_end = ao_per_frag + ao_iteration
-            noscf_orbitals[ao_start:ao_end,orb_start:orb_end] = frag.mo_coeff[:,occ_per_frag::]
+            noscf_orbitals[ao_start:ao_end,orb_start:orb_end] \
+            = frag.mo_coeff[:,occ_per_frag::]
             orb_iteration += (ao_per_frag - occ_per_frag)
             ao_iteration += ao_per_frag
     else:
@@ -73,8 +77,10 @@ def noscfbasis(mf, *fragments):
             orb_end_beta = occ_per_frag_beta + orb_iteration_beta
             ao_start = ao_iteration
             ao_end = ao_per_frag + ao_iteration
-            noscf_orbitals[0,ao_start:ao_end, orb_start_alpha:orb_end_alpha] = frag.mo_coeff[0,:, :occ_per_frag_alpha]
-            noscf_orbitals[1,ao_start:ao_end, orb_start_beta:orb_end_beta] = frag.mo_coeff[1,:, :occ_per_frag_beta]
+            noscf_orbitals[0,ao_start:ao_end, orb_start_alpha:orb_end_alpha] \
+            = frag.mo_coeff[0,:, :occ_per_frag_alpha]
+            noscf_orbitals[1,ao_start:ao_end, orb_start_beta:orb_end_beta] \
+            = frag.mo_coeff[1,:, :occ_per_frag_beta]
             orb_iteration_alpha += occ_per_frag_alpha
             orb_iteration_beta += occ_per_frag_beta
             ao_iteration += ao_per_frag
@@ -90,13 +96,17 @@ def noscfbasis(mf, *fragments):
             ao_per_frag = frag.mol.nao_nr()
             # Create indexing ranges
             orb_start_alpha = virtual_start_alpha + orb_iteration_alpha
-            orb_end_alpha = orb_start_alpha + (ao_per_frag - occ_per_frag_alpha)
+            orb_end_alpha = orb_start_alpha + \
+            (ao_per_frag - occ_per_frag_alpha)
             orb_start_beta = virtual_start_beta + orb_iteration_beta
-            orb_end_beta = orb_start_beta + (ao_per_frag - occ_per_frag_beta)
+            orb_end_beta = orb_start_beta + \
+            (ao_per_frag - occ_per_frag_beta)
             ao_start = 0 + ao_iteration
             ao_end = ao_per_frag + ao_iteration
-            noscf_orbitals[0,ao_start:ao_end, orb_start_alpha:orb_end_alpha] = frag.mo_coeff[0,:, occ_per_frag_alpha::]
-            noscf_orbitals[1,ao_start:ao_end, orb_start_beta:orb_end_beta] = frag.mo_coeff[1,:, occ_per_frag_beta::]
+            noscf_orbitals[0,ao_start:ao_end, orb_start_alpha:orb_end_alpha] \
+            = frag.mo_coeff[0,:, occ_per_frag_alpha::]
+            noscf_orbitals[1,ao_start:ao_end, orb_start_beta:orb_end_beta] \
+            = frag.mo_coeff[1,:, occ_per_frag_beta::]
             orb_iteration_alpha += (ao_per_frag - occ_per_frag_alpha)
             orb_iteration_beta += (ao_per_frag - occ_per_frag_beta)
             ao_iteration += ao_per_frag

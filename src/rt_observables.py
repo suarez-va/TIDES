@@ -38,7 +38,8 @@ def prepare_observables(rt_mf):
 
 def get_observables(rt_mf, mo_coeff_print):
     for key, function in rt_mf.observables_functions.items():
-          rt_mf.observables_values[key] = function[0](rt_mf, rt_mf.den_ao, mo_coeff_print)
+          rt_mf.observables_values[key] = function[0](rt_mf, rt_mf.den_ao,
+                                                     mo_coeff_print)
 
     rt_output.update_output_file(rt_mf)
 
@@ -51,7 +52,8 @@ def get_charge(rt_mf, den_ao, *args):
     if rt_mf.nmat == 2:
         charge.append(np.trace(np.sum(np.matmul(den_ao,rt_mf.ovlp), axis=0)))
         for index, mask in enumerate(rt_mf.fragments):
-            charge.append(np.trace(np.sum(np.matmul(den_ao,rt_mf.ovlp) * mask, axis=0)))
+            charge.append(np.trace(np.sum(np.matmul(den_ao,rt_mf.ovlp) * mask,
+                                         axis=0)))
     else:
         charge.append(np.trace(np.matmul(den_ao,rt_mf.ovlp)))
         for index, mask in enumerate(rt_mf.fragments):
@@ -60,11 +62,12 @@ def get_charge(rt_mf, den_ao, *args):
 
 def get_den_mo(rt_mf, den_ao, mo_coeff_print, *args):
     # P_mo = C+SP_aoSC
-
     SP_aoS = np.matmul(rt_mf.ovlp,np.matmul(den_ao,rt_mf.ovlp))
     if rt_mf.nmat == 2:
-        mo_coeff_print_transpose = np.stack((mo_coeff_print[0].T, mo_coeff_print[1].T))
-        den_mo = np.matmul(mo_coeff_print_transpose,np.matmul(SP_aoS,mo_coeff_print))
+        mo_coeff_print_transpose = np.stack((mo_coeff_print[0].T,
+                                            mo_coeff_print[1].T))
+        den_mo = np.matmul(mo_coeff_print_transpose,np.matmul(SP_aoS,
+                                                             mo_coeff_print))
         return np.real(np.sum(den_mo,axis=0))
     else:
         den_mo = np.matmul(mo_coeff_print.T, np.matmul(SP_aoS,mo_coeff_print))

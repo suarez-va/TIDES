@@ -47,9 +47,11 @@ def magnus_interpol(rt_mf, fock_orth_n12dt):
         mo_coeff_orth_pdt = np.matmul(u, mo_coeff_orth)
         mo_coeff_ao_pdt = np.matmul(rt_mf.orth, mo_coeff_orth_pdt)
 
-        den_ao_pdt = rt_mf._scf.make_rdm1(mo_coeff=mo_coeff_ao_pdt, mo_occ=rt_mf.occ)
+        den_ao_pdt = rt_mf._scf.make_rdm1(mo_coeff=mo_coeff_ao_pdt,
+                                         mo_occ=rt_mf.occ)
         if (iteration > 0 and
-        abs(np.linalg.norm(mo_coeff_ao_pdt) - np.linalg.norm(mo_coeff_ao_pdt_old)) < rt_mf.magnus_tolerance):
+        abs(np.linalg.norm(mo_coeff_ao_pdt)
+        - np.linalg.norm(mo_coeff_ao_pdt_old)) < rt_mf.magnus_tolerance):
 
             rt_mf._scf.mo_coeff = mo_coeff_ao_pdt
             rt_mf.den_ao = den_ao_pdt

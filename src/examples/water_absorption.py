@@ -2,7 +2,7 @@ import numpy as np
 from pyscf import gto, scf, dft
 import rt_scf
 from rt_spec import abs_spec
-from rt_vapp import electric_field
+from rt_vapp import ElectricField
 from rt_parse import parse
 
 mol = gto.M(
@@ -19,10 +19,10 @@ mf = dft.RKS(mol)
 mf.xc = 'PBE0'
 mf.kernel()
 
-rt_mf = rt_scf.rt_scf(mf, 0.2, 1, 1000, 'water_abs')
+rt_mf = rt_scf.RT_SCF(mf, 0.2, 1, 1000, 'water_abs')
 rt_mf.observables.update(dipole=True)
 
-delta_field = electric_field('delta', [0.0001, 0.0001, 0.0001])
+delta_field = ElectricField('delta', [0.0001, 0.0001, 0.0001])
 
 rt_mf.add_potential(delta_field)
 
