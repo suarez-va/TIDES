@@ -1,7 +1,7 @@
 import numpy as np
 
 '''
-Real-time SCF utilities
+Real-time SCF Utilities
 '''
 
 def excite(rt_mf, excitation_alpha=None, excitation_beta=None):
@@ -16,7 +16,7 @@ def excite(rt_mf, excitation_alpha=None, excitation_beta=None):
             rt_mf.occ[1][excitation_beta-1] -= 1
 
     rt_mf.den_ao = rt_mf._scf.make_rdm1(mo_occ = rt_mf.occ)
-  
+
 def input_fragments(rt_mf, *fragments):
     # Specify the relevant atom indices for each fragment
     # The charge on each fragment will be calculated at every timestep

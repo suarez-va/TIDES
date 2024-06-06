@@ -2,10 +2,10 @@ import numpy as np
 from scipy.linalg import expm, inv
 
 '''
-Real-time SCF Integrators
+Real-time SCF Integrator Functions
 '''
 
-def prop_magnus_step(rt_mf, mo_coeff_old):
+def magnus_step(rt_mf, mo_coeff_old):
     '''
     C'(t+dt) = U(t)C'(t-dt)
     U(t) = exp(-i*2dt*F')
@@ -20,14 +20,12 @@ def prop_magnus_step(rt_mf, mo_coeff_old):
     mo_coeff_new = np.matmul(rt_mf.orth, mo_coeff_orth_new)
 
     mo_coeff_old = rt_mf._scf.mo_coeff
-
-    # Update mo_coeff and density matrix
     rt_mf._scf.mo_coeff = mo_coeff_new
     rt_mf.den_ao = rt_mf._scf.make_rdm1(mo_occ=rt_mf.occ)
 
     return mo_coeff_old
 
-def prop_magnus_ord2_interpol(rt_mf, fock_orth_n12dt):
+def magnus_interpol(rt_mf, fock_orth_n12dt):
     '''
     C'(t+dt) = U(t+0.5dt)C'(t)
     U(t+0.5dt) = exp(-i*dt*F')
@@ -40,38 +38,36 @@ def prop_magnus_ord2_interpol(rt_mf, fock_orth_n12dt):
 
     fock_orth = rt_mf.get_fock_orth(rt_mf.den_ao)
     mo_coeff_orth = np.matmul(inv(rt_mf.orth), rt_mf._scf.mo_coeff)
-
     fock_orth_p12dt = 2 * fock_orth - fock_orth_n12dt
 
-    iteration = 0
-    while iteration < 15:
+    for iteration in range(rt_mf.magnus_maxiter):
 
         u = expm(-1j*rt_mf.timestep*fock_orth_p12dt)
 
         mo_coeff_orth_pdt = np.matmul(u, mo_coeff_orth)
-
         mo_coeff_ao_pdt = np.matmul(rt_mf.orth, mo_coeff_orth_pdt)
 
-        den_ao_pdt = rt_mf._scf.make_rdm1(mo_coeff=mo_coeff_ao_pdt, mo_occ=rt_mf.occ)
+        den_ao_pdt = rt_mf._scf.make_rdm1(mo_coeff=mo_coeff_ao_pdt,
+                                         mo_occ=rt_mf.occ)
         if (iteration > 0 and
-            abs(np.linalg.norm(mo_coeff_ao_pdt) - np.linalg.norm(mo_coeff_ao_pdt_old)) < rt_mf.magnus_tolerance):
+        abs(np.linalg.norm(mo_coeff_ao_pdt)
+        - np.linalg.norm(mo_coeff_ao_pdt_old)) < rt_mf.magnus_tolerance):
 
             rt_mf._scf.mo_coeff = mo_coeff_ao_pdt
             rt_mf.den_ao = den_ao_pdt
-            fock_orth_n12dt = fock_orth_p12dt
-            return fock_orth_n12dt
+            return fock_orth_p12dt
 
+        rt_mf.t += rt_mf.timestep
         fock_orth_pdt = rt_mf.get_fock_orth(den_ao_pdt)
+        rt_mf.t -= rt_mf.timestep
 
-        fock_orth_p12dt = 1/2 * fock_orth_pdt + 1/2 * fock_orth
+        fock_orth_p12dt = 0.5 * (fock_orth + fock_orth_pdt)
 
         mo_coeff_ao_pdt_old = mo_coeff_ao_pdt
-        iteration += 1
 
-    rt_mf._scf.mo_coeff = mo_coeff_ao_pdt
-    rt_mf.den_ao = den_ao_pdt
-    fock_orth_n12dt = fock_orth_p12dt
-    return fock_orth_n12dt
+        rt_mf._scf.mo_coeff = mo_coeff_ao_pdt
+        rt_mf.den_ao = den_ao_pdt
+        return fock_orth_p12dt
 
 def rk4(rt_mf):
     '''

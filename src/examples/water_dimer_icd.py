@@ -3,6 +3,7 @@ import numpy as np
 import rt_scf
 import rt_utils
 import basis_utils
+from rt_cap import MOCAP
 
 dimer = gto.Mole()
 water1 = gto.Mole()
@@ -39,15 +40,23 @@ dimer.kernel()
 water1.kernel()
 water2.kernel()
 
+# Calculate noscf basis to print orbital occupations in
 noscf_orbitals = basis_utils.noscfbasis(dimer, water1, water2)
 
-rt_water = rt_scf.rt_scf(dimer,1,1,1500,"H2OH2O")
-#rt_water.prop = 'magnus_step'
-rt_water.CAP = [0.5, -0.0477, 1.0, 10.0]
+rt_water = rt_scf.RT_SCF(dimer,1,1,1500,"H2OH2O")
 
+# Declare which observables to be calculated/printed
+rt_water.observables.update(mo_occ=True, charge=True, energy=True)
+rt_water.prop = 'magnus_step'
 
+# Create object for complex absorbing potential and add to rt object
+CAP = MOCAP(0.5, 0.0477, 1.0, 10.0, dimer.get_ovlp())
+rt_water.add_potential(CAP)
+
+# Remove electron from 4th molecular orbital (in SCF basis)
+# Declare the two water fragments for their charge to be calculated
 rt_utils.excite(rt_water, 4)
 rt_utils.input_fragments(rt_water, range(0,3),range(3,6))
 
-
-rt_water.kernel(mo_coeff_print = noscf_orbitals)
+# Start calculation, send in noscf_orbitals to print
+rt_water.kernel(mo_coeff_print=noscf_orbitals)
