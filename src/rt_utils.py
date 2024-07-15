@@ -1,4 +1,6 @@
 import numpy as np
+from basis_utils import match_fragment_atom, mask_fragment_basis
+
 
 '''
 Real-time SCF Utilities
@@ -19,12 +21,24 @@ def excite(rt_mf, excitation_alpha=None, excitation_beta=None):
 
 def input_fragments(rt_mf, *fragments):
     # Specify the relevant atom indices for each fragment
-    # The charge on each fragment will be calculated at every timestep
+    # The charge, energy, dipole, and magnetization on each fragment
+    # can be calculated
+
     nmo = rt_mf._scf.mol.nao_nr()
-
-    rt_mf.fragments = np.zeros((len(fragments),nmo,nmo))
-
     for index, frag in enumerate(fragments):
-        for j, bf in enumerate(rt_mf._scf.mol.ao_labels()):
-            if int(bf.split()[0]) in frag:
-                rt_mf.fragments[index,j,j] = 1
+        rt_mf.fragments.append(frag)
+        match_indices = match_fragment_atom(rt_mf._scf, frag)
+        mask_basis = mask_fragment_basis(rt_mf._scf, match_indices)
+        rt_mf.fragments_indices.append(mask_basis)
+
+def restart_from_chkfile(rt_mf):
+    with open(rt_mf.chkfile, 'r') as f:
+        chk_lines = f.readlines()
+        rt_mf.current_time = np.float64(chk_lines[0].split()[3])
+        print(chk_lines[2:])
+        rt_mf._scf.mo_coeff = np.loadtxt(chk_lines[2:], dtype=np.complex128)
+
+def update_chkfile(rt_mf):
+    with open(rt_mf.chkfile, 'w') as f:
+        f.write(f"Current Time (AU): {rt_mf.current_time} \nMO Coeffs: \n")
+        np.savetxt(f, rt_mf._scf.mo_coeff)

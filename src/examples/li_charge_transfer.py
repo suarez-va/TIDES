@@ -46,8 +46,8 @@ Li1.kernel()
 Li2.kernel()
 
 dimer.mo_coeff = basis_utils.noscfbasis(dimer,Li1,Li2)
-rt_mf = rt_scf.RT_SCF(dimer,1,1,200,"Li")
+rt_mf = rt_scf.RT_SCF(dimer,1,1,200)
 rt_mf.observables.update(charge=True)
-rt_utils.input_fragments(rt_mf,range(0,1),range(1,2))
+rt_utils.input_fragments(rt_mf, Li1, Li2)
 
 rt_mf.kernel()
