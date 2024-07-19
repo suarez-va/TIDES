@@ -1,44 +1,39 @@
 import numpy as np
 
 '''
-Real-time SCF Output Functions
+Real-time SCF Output File
 '''
 
-def update_output(rt_mf):
-    rt_mf.log.note(f"Current Time (AU): {rt_mf.current_time:.8f} \n")
-    for key, function in rt_mf.observables_functions.items():
-        function[1](rt_mf)
+def create_output_file(rt_mf):
+    with open(f"{rt_mf.filename}.txt", "w") as output_main:
+        output_main.write("TEXT FOR BEGINNING OF OUTPUT FILE \n")
+        output_main.write("=== Start Propagation === \n")
+        output_main.write(f"{'=' * 25} \n")
 
-    rt_mf.log.note(f"{'=' * 25} \n")
+def update_output_file(rt_mf):
+    with open(f"{rt_mf.filename}.txt", "a") as output_main:
+        output_main.write(f"Current Time (AU): {rt_mf.t:.8f} \n")
+        for key, function in rt_mf.observables_functions.items():
+            function[1](output_main, rt_mf.observables_values[key])
 
-def print_energy(rt_mf):
-    energy = rt_mf.energy[-1]
-    rt_mf.log.note(f"Total Energy (AU): {energy[0]} \n")
-    if len(energy) > 1:
-        for index, fragment in enumerate(energy[1:]):
-            rt_mf.log.note(f"Fragment {index + 1} Energy (AU): {fragment} \n")
+        output_main.write(f"{'=' * 25} \n")
 
-def print_mo_occ(rt_mf):
-    mo_occ = rt_mf.mo_occ[-1]
-    rt_mf.log.note(f"Molecular Orbital Occupations: {mo_occ} \n")
+def print_energy(output_main, energy):
+    output_main.write(f"Total Energy (AU): {energy} \n")
 
-def print_charge(rt_mf):
-    charge = rt_mf.charge[-1]
-    rt_mf.log.note(f"Total Electronic Charge: {np.real(charge[0])} \n")
+def print_mo_occ(output_main, den_mo):
+    output_main.write(f"Molecular Orbital Occupations: \
+                     {np.diagonal(den_mo)} \n")
+
+def print_charge(output_main, charge):
+    output_main.write(f"Electronic Charge (Total): {np.real(charge[0])} \n")
     if len(charge) > 1:
         for index, fragment in enumerate(charge[1:]):
-            rt_mf.log.note(f"Fragment {index + 1} Electronic Charge: {np.real(fragment)} \n")
+            output_main.write(f"Electronic Charge (Fragment {index + 1}): \
+                             {np.real(fragment)} \n")
 
-def print_dipole(rt_mf):
-    dipole = rt_mf.dipole[-1]
-    rt_mf.log.note(f"Total Dipole Moment [X, Y, Z] (AU): {dipole[0]} \n")
-    if len(dipole) > 1:
-        for index, fragment in enumerate(dipole[1:]):
-            rt_mf.log.note(f"Fragment {index + 1} Dipole Moment [X, Y, Z] (AU): {fragment} \n")
+def print_dipole(output_main, dipole):
+    output_main.write(f"Dipole Moment [X, Y, Z] (AU): {dipole} \n")
 
-def print_mag(rt_mf):
-    mag = rt_mf.mag[-1]
-    rt_mf.log.note(f"Total Magnetization [X, Y, Z]: {np.real(mag[0])} \n")
-    if len(mag) > 1:
-        for index, fragment in enumerate(mag[1:]):
-            rt_mf.log.note(f"Fragment {index + 1} Magnetization [X, Y, Z] (AU): {fragment} \n")
+def print_mag(output_main, mag):
+    output_main.write(f"Magnetization [X, Y, Z]: {np.real(mag)} \n")

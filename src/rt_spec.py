@@ -4,15 +4,18 @@ from pyscf import lib
 
 
 '''
-Real-time SCF Spectra
+Real-time SCF Spectra Functions
 '''
 
 c = lib.param.LIGHT_SPEED
 
-def abs_spec(time, dipole, filename, kick_str=1, pad=None, damp=None, preprocess_zero=True):
+def abs_spec(time, dipole, filename, kick_str=1,
+            pad=None, damp=None, preprocess_zero=True):
     '''
-    Performs 1D Fourier Transform on time-dependent dipole moment for given SCF object.
-    Adapted from NWChem's fft1d.m GNU Octave script (Kenneth Lopata), which can be found at https://nwchemgit.github.io/RT-TDDFT.html#absorption-spectrum-of-water
+    Performs 1D Fourier Transform on time-dependent dipole moment.
+    Adapted from NWChem's fft1d.m GNU Octave script (Kenneth Lopata),
+    which can be found at
+    github.com/nwchemgit/nwchem/blob/master/contrib/parsers/fft1d.m
     '''
 
     dipolex_t = dipole[:,0]
@@ -45,9 +48,9 @@ def abs_spec(time, dipole, filename, kick_str=1, pad=None, damp=None, preprocess
     wmin = 0.0
     wmax = m * dw
     w = np.linspace(wmin, wmax, m)
-    dipolex_f = fft(dipolex_t)
-    dipoley_f = fft(dipoley_t)
-    dipolez_f = fft(dipolez_t)
+    dipolex_f = -1 * fft(dipolex_t)
+    dipoley_f = -1 * fft(dipoley_t)
+    dipolez_f = -1 * fft(dipolez_t)
 
     im_dipole_f = np.imag(dipolex_f) + np.imag(dipoley_f) + np.imag(dipolez_f)
     im_dipole_f = im_dipole_f[:m]
