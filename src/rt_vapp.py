@@ -20,20 +20,20 @@ class ElectricField:
         return self.amplitude
 
     def gaussian_energy(self, rt_mf):
-        return self.amplitude * ((np.exp(-1 * (rt_mf.t - self.center) ** 2 / \
-        (2 * self.width ** 2))) * np.sin(self.frequency * rt_mf.t
+        return self.amplitude * ((np.exp(-1 * (rt_mf.current_time - self.center) ** 2 / \
+        (2 * self.width ** 2))) * np.sin(self.frequency * rt_mf.current_time
                                         + self.phase))
 
     def hann_energy(self, rt_mf):
         return self.amplitude * ((np.sin(np.pi / self.width * \
-        (rt_mf.t - self.center - self.width / 2))) ** 2 * \
-        np.sin(self.frequency * rt_mf.t + self.phase))
+        (rt_mf.current_time - self.center - self.width / 2))) ** 2 * \
+        np.sin(self.frequency * rt_mf.current_time + self.phase))
 
     def resonant_energy(self, rt_mf):
-        return self.amplitude * np.sin(self.frequency * rt_mf.t + self.phase)
+        return self.amplitude * np.sin(self.frequency * rt_mf.current_time + self.phase)
 
     def calculate_field_energy(self, rt_mf):
-        if self.field_type == 'delta' and rt_mf.t == self.center:
+        if self.field_type == 'delta' and rt_mf.current_time == self.center:
             return self.delta_energy()
 
         elif self.field_type == 'gaussian':
@@ -51,4 +51,4 @@ class ElectricField:
     def calculate_potential(self, rt_mf):
         energy = self.calculate_field_energy(rt_mf)
         tdip = rt_mf._scf.mol.intor('int1e_r', comp=3)
-        return np.einsum('xij,x->ij', -1 * tdip, energy)
+        return np.einsum('xij,x->ij',tdip, energy)
