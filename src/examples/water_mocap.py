@@ -29,3 +29,4 @@ rt_mf.add_potential(CAP, delta_field)
 
 
 rt_mf.kernel()
+

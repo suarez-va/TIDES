@@ -35,10 +35,25 @@ def restart_from_chkfile(rt_mf):
     with open(rt_mf.chkfile, 'r') as f:
         chk_lines = f.readlines()
         rt_mf.current_time = np.float64(chk_lines[0].split()[3])
-        print(chk_lines[2:])
-        rt_mf._scf.mo_coeff = np.loadtxt(chk_lines[2:], dtype=np.complex128)
+        if rt_mf.nmat == 1:
+            rt_mf._scf.mo_coeff = np.loadtxt(chk_lines[2:], dtype=np.complex128)
+        else:
+            for i, line in enumerate(chk_lines):
+                if "Beta" in line:
+                    b0 = i
+                    break
+
+            mo_alpha0 = np.loadtxt(chk_lines[3:b0], dtype=np.complex128)
+            mo_beta0 = np.loadtxt(chk_lines[b0+1:], dtype=np.complex128)
+            rt_mf._scf.mo_coeff = np.stack((mo_alpha0, mo_beta0))
 
 def update_chkfile(rt_mf):
     with open(rt_mf.chkfile, 'w') as f:
         f.write(f"Current Time (AU): {rt_mf.current_time} \nMO Coeffs: \n")
-        np.savetxt(f, rt_mf._scf.mo_coeff)
+        if rt_mf.nmat == 1:
+            np.savetxt(f, rt_mf._scf.mo_coeff)
+        else:
+            f.write("Alpha \n")
+            np.savetxt(f, rt_mf._scf.mo_coeff[0])
+            f.write("Beta \n")
+            np.savetxt(f, rt_mf._scf.mo_coeff[1])

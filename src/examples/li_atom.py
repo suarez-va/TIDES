@@ -24,7 +24,7 @@ Li = scf.ghf.GHF(LiMol)
 Li.kernel()
 
 static_bfield(Li, [mag_x,mag_y,mag_z])
-rt_mf = RT_SCF(Li, 10, 1, 1000)
+rt_mf = RT_SCF(Li, 1, 1, 10000)
 
 rt_mf.observables.update(dipole=True, mag=True)
 rt_mf.kernel()
