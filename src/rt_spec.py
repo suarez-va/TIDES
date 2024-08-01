@@ -15,9 +15,9 @@ def abs_spec(time, dipole, filename, kick_str=1, pad=None, damp=None, preprocess
     Adapted from NWChem's fft1d.m GNU Octave script (Kenneth Lopata), which can be found at https://nwchemgit.github.io/RT-TDDFT.html#absorption-spectrum-of-water
     '''
 
-    dipolex_t = dipole[:,0]
-    dipoley_t = dipole[:,1]
-    dipolez_t = dipole[:,2]
+    dipolex_t = np.copy(dipole[:,0])
+    dipoley_t = np.copy(dipole[:,1])
+    dipolez_t = np.copy(dipole[:,2])
 
     if preprocess_zero:
         dipolex_t -= dipolex_t[0]
@@ -50,9 +50,8 @@ def abs_spec(time, dipole, filename, kick_str=1, pad=None, damp=None, preprocess
     dipolez_f = fft(dipolez_t)
 
     im_dipole_f = np.imag(dipolex_f) + np.imag(dipoley_f) + np.imag(dipolez_f)
-    im_dipole_f = im_dipole_f[:m]
-
+    
+    im_dipole_f = np.abs(im_dipole_f[:m])
     osc_str = (4 * np.pi) / (3 * c * kick_str) * w * im_dipole_f
-
     abs_vs_freq = np.transpose([w,osc_str])
     np.savetxt(filename + ".txt", abs_vs_freq)

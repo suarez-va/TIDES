@@ -39,9 +39,9 @@ def match_fragment_basis(mf, match_indices):
     if mf.istype('GHF') | mf.istype('GKS'):
         # Account for bb and ab/ba blocks of generalized density matrix
         match_basis = np.concatenate((match_basis, [ind + mf.mol.nao for ind in match_basis]))
-
+    
     return tuple(match_basis)
-
+    
 def mask_fragment_basis(mf, match_indices):
     match_basis = match_fragment_basis(mf, match_indices)
 
@@ -53,7 +53,7 @@ def mask_fragment_basis(mf, match_indices):
 def noscfbasis(mf, *fragments, reorder=True):
     total_dim = np.shape(mf.mo_coeff)
     noscf_orbitals = np.zeros(total_dim)
-
+    
     for frag in fragments:
         match_indices = match_fragment_atom(mf, frag)
         mask = mask_fragment_basis(mf, match_indices)
@@ -68,7 +68,7 @@ def noscfbasis(mf, *fragments, reorder=True):
     orth_ao(mf)
     # Restore original mo_coeff to mf, return noscf mo_coeff
     noscf_orbitals = mf.mo_coeff
-    mf.mo_coeff = old_orbitals
+    mf.mo_coeff = old_orbitals     
     return noscf_orbitals
 
 def reorder_noscf(noscf_orbitals, mf, *fragments):
@@ -112,3 +112,4 @@ def occ_sort(oocc):
         else:
             nvirt.append(i)
     return tuple(nocc + nvirt)
+

@@ -51,4 +51,4 @@ class ElectricField:
     def calculate_potential(self, rt_mf):
         energy = self.calculate_field_energy(rt_mf)
         tdip = rt_mf._scf.mol.intor('int1e_r', comp=3)
-        return np.einsum('xij,x->ij', -1 * tdip, energy)
+        return np.einsum('xij,x->ij',tdip, energy)

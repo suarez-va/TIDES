@@ -48,7 +48,7 @@ def get_energy(rt_mf, den_ao, *args):
     for i, mask in enumerate(rt_mf.fragments_indices):
         frag = rt_mf.fragments[i]
         energy.append(frag.energy_tot(dm=den_ao[mask]))
-
+    
     rt_mf.energy.append(energy)
 
 def get_charge(rt_mf, den_ao, *args):
@@ -62,7 +62,7 @@ def get_charge(rt_mf, den_ao, *args):
         charge.append(np.trace(np.matmul(den_ao,rt_mf.ovlp)))
         for _, mask in enumerate(rt_mf.fragments_indices):
             charge.append(np.trace(np.matmul(den_ao,rt_mf.ovlp)[mask]))
-
+    
     rt_mf.charge.append(charge)
 
 def get_mo_occ(rt_mf, den_ao, mo_coeff_print, *args):
@@ -84,14 +84,14 @@ def get_dipole(rt_mf, den_ao, *args):
     for i, mask in enumerate(rt_mf.fragments_indices):
         frag = rt_mf.fragments[i]
         dipole.append(frag.dip_moment(frag.mol, den_ao[mask], 'A.U.', 1))
-
+    
     rt_mf.dipole.append(dipole)
 
 def get_mag(rt_mf, den_ao, *args):
-    mag = []
+    mag = [] 
     Nsp = int(np.shape(rt_mf.ovlp)[0] / 2)
-
-    magx = np.sum((den_ao[:Nsp, Nsp:] + den_ao[Nsp:, :Nsp]) * rt_mf.ovlp[:Nsp,:Nsp])
+    
+    magx = np.sum((den_ao[:Nsp, Nsp:] + den_ao[Nsp:, :Nsp]) * rt_mf.ovlp[:Nsp,:Nsp]) 
     magy = 1j * np.sum((den_ao[:Nsp, Nsp:] - den_ao[Nsp:, :Nsp]) * rt_mf.ovlp[:Nsp,:Nsp])
     magz = np.sum((den_ao[:Nsp, :Nsp] - den_ao[Nsp:, Nsp:]) * rt_mf.ovlp[:Nsp,:Nsp])
     mag.append([magx, magy, magz])
@@ -100,10 +100,10 @@ def get_mag(rt_mf, den_ao, *args):
         frag_ovlp = rt_mf.ovlp[mask]
         frag_den_ao = den_ao[mask]
         Nsp = int(np.shape(frag_ovlp)[0] / 2)
-
+    
         magx = np.sum((frag_den_ao[:Nsp, Nsp:] + frag_den_ao[Nsp:, :Nsp]) * frag_ovlp[:Nsp,:Nsp])
         magy = 1j * np.sum((frag_den_ao[:Nsp, Nsp:] - frag_den_ao[Nsp:, :Nsp]) * frag_ovlp[:Nsp,:Nsp])
         magz = np.sum((frag_den_ao[:Nsp, :Nsp] - frag_den_ao[Nsp:, Nsp:]) * frag_ovlp[:Nsp,:Nsp])
         mag.append([magx, magy, magz])
-
+    
     rt_mf.mag.append(mag)

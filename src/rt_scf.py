@@ -53,7 +53,7 @@ class RT_SCF:
         else:
             self.chkfile = "RT_CHKFILE.txt"
             self.current_time = 0
-
+        
         self.den_ao = self._scf.make_rdm1(mo_occ=self.occ)
         rt_observables.init_observables(self)
 
