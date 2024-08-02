@@ -6,6 +6,7 @@ def get_omega(rt_cpa):
     mol = rt_cpa._scf.mol
     Rdot = rt_cpa.nuc.vel
     X = rt_cpa.orth
+    print(X)
     Xinv = np.linalg.inv(X)
     dS = -mol.intor('int1e_ipovlp', comp=3)
 
