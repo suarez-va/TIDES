@@ -8,7 +8,6 @@ from pyscf import gto, dft, scf, grad
 #from pathlib import Path
 import rt_nuclei
 import ehrenfest_force
-import rt_cpa
 from rt_scf import RT_SCF
 
 from scipy.linalg import expm, inv, fractional_matrix_power
@@ -49,14 +48,31 @@ class RT_EHRENFEST(RT_SCF):
         self._scf.mo_occ = self.occ
         #we should add a routine to RT_SCF maybe for setting the overlap, orthogonalization matrix and maybe holding onto eigen stuff from S matrix
         self.ovlp = self._scf.mol.intor_symmetric("int1e_ovlp")
-        e, v = np.linalg.eigh(self.ovlp)
-        self.orth = np.linalg.multi_dot([v, np.diag(np.power(e, -0.5)), v.T])
+        self.evals, self.evecs = np.linalg.eigh(self.ovlp)
+        self.orth = np.linalg.multi_dot([self.evecs, np.diag(np.power(self.evals, -0.5)), self.evecs.T])
         #self.orth = fractional_matrix_power(self.ovlp, -0.5)
         #self.orth = scf.addons.canonical_orth_(self.ovlp)
 
+    # Additinal term arising from the moving nuclei in the classical path approximation to be added to the fock matrix
+    def get_omega(self):
+        mol = self._scf.mol
+        Rdot = self.nuc.vel
+        X = self.orth
+        Xinv = np.linalg.inv(X)
+        dS = -mol.intor('int1e_ipovlp', comp=3)
+    
+        Omega = np.zeros(X.shape, dtype = complex)
+        RdSX = np.zeros(X.shape)
+        aoslices = mol.aoslice_by_atom()
+        for i in range(mol.natm):
+            p0, p1 = aoslices[i,2:]
+            RdSX += np.einsum('x,xij,ik->jk', Rdot[i], dS[:,p0:p1,:], X[p0:p1,:])
+        Omega += np.matmul(RdSX, Xinv)
+        return Omega
+
     def get_fock_orth(self, den_ao):
         #if self.movebasis: Omega = rt_cpa.get_omega(self)
-        Omega = rt_cpa.get_omega(self)
+        Omega = self.get_omega()
         #self.fock = self._scf.get_fock(dm=den_ao) -1j * Omega
         self.fock = self._scf.get_fock(dm=den_ao)
         return np.matmul(self.orth.T, np.matmul(self.fock, self.orth))
@@ -117,30 +133,6 @@ class RT_EHRENFEST(RT_SCF):
             self.t += self.timestep
         return self
 
-    def kernel_abinit_2(self):
-        self.temp_create_output_file()
-        for i in range(0, self.total_steps):
-            #print to output file check:
-            if np.mod(i, self.frequency) == 0:
-                self.temp_update_output_file()
-            #first velocity half step:
-            self.nuc.get_vel(self.timestep)
-            #position full step:
-            self.nuc.get_pos(self.timestep)
-            self.nuc.get_pos(self.timestep)
-            #from current position update mol, overlap, and orthogonalization matrices:
-            self.update_mol()
-            self._scf = scf.RHF(self._scf.mol)
-            self._scf.mo_occ = self.occ
-            self._scf.kernel()
-            self.den_ao = self._scf.make_rdm1(mo_coeff = self._scf.mo_coeff, mo_occ = self._scf.mo_occ)
-            #update force:
-            self.nuc.force = ehrenfest_force.get_force(self._scf, self.den_ao)
-            #second velocity half step:
-            self.nuc.get_vel(self.timestep)
-            self.t += self.timestep
-        return self
-
     def temp_create_output_file(self):
         pos_file = open(F'{self.filename}' + '_pos.txt','w')
         vel_file = open(F'{self.filename}' + '_vel.txt','w')
@@ -163,23 +155,13 @@ class RT_EHRENFEST(RT_SCF):
         np.savetxt(force_file, self.nuc.force, '%20.8e'); force_file.write('\n')
         #norm = np.trace(np.linalg.multi_dot([np.linalg.inv(self.orth), self.den_ao, np.linalg.inv(self.orth.T)])); print(norm)
         t_out = self.t
-        h_ao = scf.hf.get_hcore(self._scf.mol); G_ao = scf.hf.get_veff(self._scf.mol, self.den_ao)
-        Eelec = np.einsum('ij,ji->', h_ao + 0.5 * G_ao, self.den_ao).real
-        #Eelec = self._scf.energy_elec(dm=self.den_ao)[0]
+        Eelec = self._scf.energy_elec(dm=self.den_ao)[0]
         Vnuc = self._scf.energy_nuc()
         Tnuc = self.nuc.get_ke()
         Etot = Eelec + Vnuc + Tnuc
         output_ar = np.array([[t_out,Etot,Eelec,Vnuc,Tnuc]])
         np.savetxt(energy_file, output_ar, '%20.8e')
         energy_file.flush()
-
-        h_ = self._scf.get_hcore(); G_ = self._scf.get_veff(self._scf.mol, dm=self.den_ao); F_ = self._scf.get_fock(dm=self.den_ao)
-        print(' ------- hcore ------- ')
-        print(h_ao - h_)
-        print(' ------- veff ------- ')
-        print(G_ao - G_)
-        print(' ------- fock ------- ')
-        print(h_ao + G_ao - F_)
 
         pos_file.close()
         vel_file.close()
