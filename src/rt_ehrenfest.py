@@ -8,7 +8,6 @@ from pyscf import gto, dft, scf, grad
 #from pathlib import Path
 import rt_nuclei
 import ehrenfest_force
-import rt_cpa
 from rt_scf import RT_SCF
 
 from scipy.linalg import expm, inv, fractional_matrix_power
@@ -49,14 +48,31 @@ class RT_EHRENFEST(RT_SCF):
         self._scf.mo_occ = self.occ
         #we should add a routine to RT_SCF maybe for setting the overlap, orthogonalization matrix and maybe holding onto eigen stuff from S matrix
         self.ovlp = self._scf.mol.intor_symmetric("int1e_ovlp")
-        e, v = np.linalg.eigh(self.ovlp)
-        self.orth = np.linalg.multi_dot([v, np.diag(np.power(e, -0.5)), v.T])
+        self.evals, self.evecs = np.linalg.eigh(self.ovlp)
+        self.orth = np.linalg.multi_dot([self.evecs, np.diag(np.power(self.evals, -0.5)), self.evecs.T])
         #self.orth = fractional_matrix_power(self.ovlp, -0.5)
         #self.orth = scf.addons.canonical_orth_(self.ovlp)
 
+    # Additinal term arising from the moving nuclei in the classical path approximation to be added to the fock matrix
+    def get_omega(self):
+        mol = self._scf.mol
+        Rdot = self.nuc.vel
+        X = self.orth
+        Xinv = np.linalg.inv(X)
+        dS = -mol.intor('int1e_ipovlp', comp=3)
+    
+        Omega = np.zeros(X.shape, dtype = complex)
+        RdSX = np.zeros(X.shape)
+        aoslices = mol.aoslice_by_atom()
+        for i in range(mol.natm):
+            p0, p1 = aoslices[i,2:]
+            RdSX += np.einsum('x,xij,ik->jk', Rdot[i], dS[:,p0:p1,:], X[p0:p1,:])
+        Omega += np.matmul(RdSX, Xinv)
+        return Omega
+
     def get_fock_orth(self, den_ao):
         #if self.movebasis: Omega = rt_cpa.get_omega(self)
-        Omega = rt_cpa.get_omega(self)
+        Omega = self.get_omega()
         #self.fock = self._scf.get_fock(dm=den_ao) -1j * Omega
         self.fock = self._scf.get_fock(dm=den_ao)
         return np.matmul(self.orth.T, np.matmul(self.fock, self.orth))

@@ -42,3 +42,10 @@ def print_mag(rt_mf):
     if len(mag) > 1:
         for index, fragment in enumerate(mag[1:]):
             rt_mf.log.note(f"Fragment {index + 1} Magnetization [X, Y, Z] (AU): {fragment} \n")
+
+#def print_nuc(rt_mf):
+#    nuc = rt_mf.nuc
+#    rt_mf.log.note(f"Nuclear Coordinates: {nuc} \n")
+
+
+
