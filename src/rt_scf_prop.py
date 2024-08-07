@@ -13,7 +13,7 @@ def propagate(rt_mf, mo_coeff_print):
 
     integrate_function = rt_integrators.get_integrator(rt_mf)
     if rt_mf.prop == "magnus_step":
-        rt_mf.mo_coeff_old = rt_mf._scf.mo_coeff
+        rt_mf.mo_coeff_orth_old = rt_mf.rotate_coeff_to_orth(rt_mf._scf.mo_coeff)
     if rt_mf.prop == "magnus_interpol":
         rt_mf.fock_orth_n12dt = rt_mf.get_fock_orth(rt_mf.den_ao)
         if not hasattr(rt_mf, 'magnus_tolerance'): rt_mf.magnus_tolerance = 1e-7
