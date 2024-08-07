@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.linalg import inv
 from pyscf import gto, dft, scf
 from pyscf.lib import logger
 import rt_scf_prop
@@ -9,7 +10,7 @@ from rt_utils import restart_from_chkfile
 from pathlib import Path
 
 '''
-Real-time SCF Main Driver
+Real-time SCF Class
 '''
 
 class RT_SCF:
@@ -20,13 +21,12 @@ class RT_SCF:
         self.frequency = frequency
         self.total_steps = total_steps
         self._scf = mf
-        self.ovlp = self._scf.get_ovlp()  # assumes constant basis
+        self.ovlp = self._scf.get_ovlp()
         self.occ = self._scf.get_occ()
 
         self.verbose = verbose
         self.potential = []
-        self.fragments = []
-        self.fragments_indices = []
+        self.fragments = {}
 
         if prop is None: prop = "magnus_interpol"
         if orth is None: orth = scf.addons.canonical_orth_(self.ovlp)
@@ -51,16 +51,26 @@ class RT_SCF:
             else:
                 self.current_time = 0
         else:
-            self.chkfile = "RT_CHKFILE.txt"
+            if filename is None:
+                self.chkfile = "RT_CHKFILE.txt"
+            else:
+                self.chkfile = "{filename}_CHKFILE.txt"
+
             self.current_time = 0
         
         self.den_ao = self._scf.make_rdm1(mo_occ=self.occ)
         rt_observables.init_observables(self)
 
     def get_fock_orth(self, den_ao):
-        self.fock = self._scf.get_fock(dm=den_ao)
+        self.fock = self._scf.get_fock(dm=den_ao).astype(np.complex128)
         if self.potential: self.applypotential()
         return np.matmul(self.orth.T, np.matmul(self.fock, self.orth))
+
+    def rotate_coeff_to_orth(self, coeff_ao):
+        return np.matmul(inv(self.orth), coeff_ao)
+
+    def rotate_coeff_to_ao(self, coeff_orth):
+        return np.matmul(self.orth, coeff_orth)
 
     def add_potential(self, *args):
         for v_ext in args:
@@ -68,11 +78,15 @@ class RT_SCF:
 
     def applypotential(self):
         for v_ext in self.potential:
-            self.fock = np.add(self.fock, v_ext.calculate_potential(self))
+            self.fock += v_ext.calculate_potential(self)
 
     def kernel(self, mo_coeff_print=None):
         if mo_coeff_print is None: mo_coeff_print = self._scf.mo_coeff
         self.log.note("Starting Propagation")
-        rt_scf_prop.propagate(self, mo_coeff_print)
-        rt_scf_cleanup.finalize(self)
+
+        try:
+            rt_scf_prop.propagate(self, mo_coeff_print)
+        finally:
+            rt_scf_cleanup.finalize(self)
+        
         return self

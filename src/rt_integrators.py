@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.linalg import expm, inv
+from scipy.linalg import expm
 
 '''
 Real-time SCF Integrator Functions
@@ -12,15 +12,13 @@ def magnus_step(rt_mf):
     '''
 
     fock_orth = rt_mf.get_fock_orth(rt_mf.den_ao)
-    mo_coeff_orth_old = np.matmul(inv(rt_mf.orth), rt_mf.mo_coeff_old)
 
     u = expm(-1j*2*rt_mf.timestep*fock_orth)
 
-    mo_coeff_orth_new = np.matmul(u, mo_coeff_orth_old)
-    mo_coeff_new = np.matmul(rt_mf.orth, mo_coeff_orth_new)
-
-    rt_mf.mo_coeff_old = rt_mf._scf.mo_coeff
-    rt_mf._scf.mo_coeff = mo_coeff_new
+    mo_coeff_orth_new = np.matmul(u, rt_mf.mo_coeff_orth_old)
+    
+    rt_mf.mo_coeff_orth_old = rt_mf.rotate_coeff_to_orth(rt_mf._scf.mo_coeff)
+    rt_mf._scf.mo_coeff = rt_mf.rotate_coeff_to_ao(mo_coeff_orth_new)
     rt_mf.den_ao = rt_mf._scf.make_rdm1(mo_occ=rt_mf.occ)
 
 def magnus_interpol(rt_mf):
@@ -35,15 +33,14 @@ def magnus_interpol(rt_mf):
     '''
 
     fock_orth = rt_mf.get_fock_orth(rt_mf.den_ao)
-    mo_coeff_orth = np.matmul(inv(rt_mf.orth), rt_mf._scf.mo_coeff)
+    mo_coeff_orth = rt_mf.rotate_coeff_to_orth(rt_mf._scf.mo_coeff)
     fock_orth_p12dt = 2 * fock_orth - rt_mf.fock_orth_n12dt
 
     for iteration in range(rt_mf.magnus_maxiter):
         u = expm(-1j*rt_mf.timestep*fock_orth_p12dt)
 
         mo_coeff_orth_pdt = np.matmul(u, mo_coeff_orth)
-        mo_coeff_ao_pdt = np.matmul(rt_mf.orth, mo_coeff_orth_pdt)
-
+        mo_coeff_ao_pdt = rt_mf.rotate_coeff_to_ao(mo_coeff_orth_pdt)
         den_ao_pdt = rt_mf._scf.make_rdm1(mo_coeff=mo_coeff_ao_pdt,
                                           mo_occ=rt_mf.occ)
         if (iteration > 0 and
@@ -75,7 +72,7 @@ def rk4(rt_mf):
     '''
 
     fock_orth = rt_mf.get_fock_orth(rt_mf.den_ao)
-    mo_coeff_orth = np.matmul(inv(rt_mf.orth), rt_mf._scf.mo_coeff)
+    mo_coeff_orth = rt_mf.rotate_coeff_to_orth(rt_mf._scf.mo_coeff)
 
     # k1
     k1 = -1j * rt_mf.timestep * (np.matmul(fock_orth,mo_coeff_orth))
@@ -93,7 +90,7 @@ def rk4(rt_mf):
     k4 = -1j * rt_mf.timestep * (np.matmul(fock_orth,mo_coeff_orth_3))
 
     mo_coeff_orth_new = mo_coeff_orth + (k1/6 + k2/3 + k3/3 + k4/6)
-    mo_coeff_ao_new = np.matmul(rt_mf.orth, mo_coeff_orth_new)
+    mo_coeff_ao_new = rt_mf.rotate_coeff(mo_coeff_orth_new, 'MO->AO')
 
     rt_mf._scf.mo_coeff = mo_coeff_ao_new
     rt_mf.den_ao = rt_mf._scf.make_rdm1(mo_occ=rt_mf.occ)
