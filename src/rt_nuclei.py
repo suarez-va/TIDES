@@ -37,11 +37,11 @@ class rt_nuc:
         np.random.seed(47)
         self.vel = np.random.normal(scale = 1. / np.sqrt(beta * self.mass))
 
-    # Position half step
+    # Position full step
     def get_pos(self, timestep):
-        self.pos += 0.5 * self.vel * timestep
+        self.pos +=  self.vel * timestep
 
-    # Velocity half step
+    # Velocity full step
     def get_vel(self, timestep):
-        self.vel += 0.5 * self.force / self.mass * timestep
+        self.vel += self.force / self.mass * timestep
 

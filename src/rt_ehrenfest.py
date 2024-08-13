@@ -1,9 +1,9 @@
 import numpy as np
 from pyscf import gto, dft, scf, grad
-#import rt_scf_prop
-#import rt_observables
-#import rt_output
-#import rt_scf_cleanup
+import rt_integrators
+import rt_observables
+import rt_output
+from rt_utils import update_chkfile
 #from rt_utils import restart_from_chkfile
 #from pathlib import Path
 import rt_nuclei
@@ -29,11 +29,13 @@ class RT_EHRENFEST(RT_SCF):
             self.den_ao = self.den_ao.astype(np.complex128)
         self.nuc = rt_nuclei.rt_nuc(self._scf.mol)
         self.nuc.force = ehrenfest_force.get_force(self._scf, self.den_ao)
-        self.t = 0
+
+        self.current_time = 0
         #rt_observables.init_observables(self)
 
         #reminder to use fractional_matrix_power and not the rounded off pyscf function
         self.update_mol()
+        self.orth_old = self.orth
 
     #for some reason updating the mol object does not update the 2 electron integrals so we're temporarily reinstantiating
     def update_mol(self):
@@ -48,8 +50,8 @@ class RT_EHRENFEST(RT_SCF):
         self._scf.mo_occ = self.occ
         #we should add a routine to RT_SCF maybe for setting the overlap, orthogonalization matrix and maybe holding onto eigen stuff from S matrix
         self.ovlp = self._scf.mol.intor_symmetric("int1e_ovlp")
-        self.evals, self.evecs = np.linalg.eigh(self.ovlp)
-        self.orth = np.linalg.multi_dot([self.evecs, np.diag(np.power(self.evals, -0.5)), self.evecs.T])
+        evals, evecs = np.linalg.eigh(self.ovlp)
+        self.orth = np.linalg.multi_dot([evecs, np.diag(np.power(evals, -0.5)), evecs.T])
         #self.orth = fractional_matrix_power(self.ovlp, -0.5)
         #self.orth = scf.addons.canonical_orth_(self.ovlp)
 
@@ -77,15 +79,221 @@ class RT_EHRENFEST(RT_SCF):
         self.fock = self._scf.get_fock(dm=den_ao)
         return np.matmul(self.orth.T, np.matmul(self.fock, self.orth))
 
+    def rotate_coeff_to_orth(self, coeff_ao):
+        return np.matmul(np.linalg.inv(self.orth), coeff_ao)
+
+    def rotate_coeff_to_ao(self, coeff_orth):
+        return np.matmul(self.orth, coeff_orth)
+
     def kernel(self):
+        rt_observables.remove_suppressed_observables(self)
         self.temp_create_output_file()
-        #holding C(t-dt) and C(t+dt) between calculations:
-        mo_coeff_orth_old = np.matmul(np.linalg.inv(self.orth), self._scf.mo_coeff)
-        mo_coeff_orth_new = mo_coeff_orth_old 
+    
+        integrate_function = rt_integrators.get_integrator(self)
+        if self.prop == "magnus_step_temp":
+            self.fock_orth = self.get_fock_orth(self.den_ao)
+            self.mo_coeff_orth_old = self.rotate_coeff_to_orth(self._scf.mo_coeff)
+        if self.prop == "magnus_interpol_temp":
+            self.fock_orth = self.get_fock_orth(self.den_ao)
+            self.fock_orth_n12dt = self.get_fock_orth(self.den_ao)
+            self.mo_coeff_orth = self.rotate_coeff_to_orth(self._scf.mo_coeff)
+            if not hasattr(self, 'magnus_tolerance'): self.magnus_tolerance = 1e-7
+            if not hasattr(self, 'magnus_maxiter'): self.magnus_maxiter = 15
+        if self.prop == "rk4":
+            self.fock_orth = self.get_fock_orth(self.den_ao)
+            self.mo_coeff_orth = self.rotate_coeff_to_orth(self._scf.mo_coeff)
+    
+        for i in range(0, self.total_steps):
+            if np.mod(i, self.frequency) == 0:
+                self.temp_update_output_file()
+                #rt_observables.get_observables(self, mo_coeff_print)
+                update_chkfile(self)
+            self.nuc.get_vel(0.5 * self.Ne_step * self.N_step * self.timestep)
+            for j in range(0, self.N_step):
+                self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
+                self.update_mol()
+                for k in range(0, self.Ne_step):
+                    if (k == self.Ne_step - 1):
+                        self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
+                        self.update_mol()                   
+                        if (j == self.N_step - 1):
+                            self.nuc.get_vel(0.5 * self.Ne_step * self.N_step * self.timestep)
+                    integrate_function(self)
+                    self.current_time += self.timestep
+            self.nuc.get_vel(-0.5 * self.Ne_step * self.N_step * self.timestep)
+            self.nuc.force = ehrenfest_force.get_force(self._scf, self.den_ao)
+            self.nuc.get_vel(0.5 * self.Ne_step * self.N_step * self.timestep)
+        self.temp_update_output_file()
+        #rt_observables.get_observables(self, mo_coeff_print)  # Collect observables at final time
+        update_chkfile(self)
+        return self
+
+# kernel_simple() should simplify to kernel() if Ne_step = N_step = 1
+    def kernel_simple(self):
+        rt_observables.remove_suppressed_observables(self)
+        self.temp_create_output_file()
+
+        integrate_function = rt_integrators.get_integrator(self)
+        if self.prop == "magnus_step":
+            self.fock_orth = self.get_fock_orth(self.den_ao)
+            self.mo_coeff_orth_old = self.rotate_coeff_to_orth(self._scf.mo_coeff)
+        if self.prop == "magnus_interpol_temp":
+            self.fock_orth = self.get_fock_orth(self.den_ao)
+            self.fock_orth_n12dt = self.get_fock_orth(self.den_ao)
+            self.mo_coeff_orth = self.rotate_coeff_to_orth(self._scf.mo_coeff)
+            if not hasattr(self, 'magnus_tolerance'): self.magnus_tolerance = 1e-7
+            if not hasattr(self, 'magnus_maxiter'): self.magnus_maxiter = 15
+        if self.prop == "rk4":
+            self.fock_orth = self.get_fock_orth(self.den_ao)
+            self.mo_coeff_orth = self.rotate_coeff_to_orth(self._scf.mo_coeff)
+    
+        for i in range(0, self.total_steps):
+            if np.mod(i, self.frequency) == 0:
+                self.temp_update_output_file()
+                #rt_observables.get_observables(self, mo_coeff_print)
+                update_chkfile(self)
+
+            self.nuc.get_vel(0.5 * self.timestep)
+            self.nuc.get_pos(self.timestep)
+            self.update_mol()
+            self.nuc.get_vel(0.5 * self.timestep)
+            integrate_function(self)
+            self.nuc.get_vel(-0.5 * self.timestep)
+            self.nuc.force = ehrenfest_force.get_force(self._scf, self.den_ao)
+            self.nuc.get_vel(0.5 * self.timestep)
+
+            self.current_time += self.timestep
+    
+        self.temp_update_output_file()
+        #rt_observables.get_observables(self, mo_coeff_print)  # Collect observables at final time
+        update_chkfile(self)
+        return self
+
+
+# EVERYTHING BELOW IS JUNK!!!
+
+    def kernel_slice1(self):
+        rt_observables.remove_suppressed_observables(self)
+        self.temp_create_output_file()
+    
+        integrate_function = rt_integrators.get_integrator(self)
+        if self.prop == "magnus_step":
+            self.fock_orth = self.get_fock_orth(self.den_ao)
+            self.mo_coeff_orth_old = self.rotate_coeff_to_orth(self._scf.mo_coeff)
+        if self.prop == "magnus_interpol_temp":
+            self.fock_orth = self.get_fock_orth(self.den_ao)
+            self.fock_orth_n12dt = self.get_fock_orth(self.den_ao)
+            self.mo_coeff_orth = self.rotate_coeff_to_orth(self._scf.mo_coeff)
+            if not hasattr(self, 'magnus_tolerance'): self.magnus_tolerance = 1e-7
+            if not hasattr(self, 'magnus_maxiter'): self.magnus_maxiter = 15
+        if self.prop == "rk4":
+            self.fock_orth = self.get_fock_orth(self.den_ao)
+            self.mo_coeff_orth = self.rotate_coeff_to_orth(self._scf.mo_coeff)
+    
+        for i in range(0, self.total_steps):
+            if np.mod(i, self.frequency) == 0:
+                self.temp_update_output_file()
+                #rt_observables.get_observables(self, mo_coeff_print)
+                update_chkfile(self)
+
+            self.nuc.get_vel(0.5 * self.Ne_step * self.timestep)
+            self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
+            self.update_mol()
+            for k in range(0, self.Ne_step):
+                if (k == self.Ne_step - 1):
+                    self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
+                    self.update_mol()                   
+                    self.nuc.get_vel(0.5 * self.Ne_step * self.timestep)
+                integrate_function(self)
+                self.current_time += self.timestep
+            self.nuc.get_vel(-0.5 * self.Ne_step * self.timestep)
+            self.nuc.force = ehrenfest_force.get_force(self._scf, self.den_ao)
+            self.nuc.get_vel(0.5 * self.Ne_step * self.timestep)
+
+        self.temp_update_output_file()
+        #rt_observables.get_observables(self, mo_coeff_print)  # Collect observables at final time
+        update_chkfile(self)
+        return self
+
+
+
+    def kernel_interpol(self):
+        self.temp_create_output_file()
+        self.mo_coeff_orth = np.matmul(np.linalg.inv(self.orth), self._scf.mo_coeff)
+        self.fock_orth = self.get_fock_orth(self.den_ao)
+        self.fock_orth_n12dt = self.fock_orth
+        if not hasattr(self, 'magnus_tolerance'): self.magnus_tolerance = 1e-7
+        if not hasattr(self, 'magnus_maxiter'): self.magnus_maxiter = 15
         for i in range(0, self.total_steps):
             #print to output file check:
             if np.mod(i, self.frequency) == 0:
                 self.temp_update_output_file()
+            #fock get fock at current time step and nuclear geometry
+            self.fock_orth = self.get_fock_orth(self.den_ao)
+            #first velocity half step:
+            self.nuc.get_vel(self.timestep)
+            #position full step:
+            self.nuc.get_pos(self.timestep)
+            self.nuc.get_pos(self.timestep)           
+            #from current position update mol, overlap, and orthogonalization matrices:
+            self.update_mol()
+            self.orth_old = self.orth
+
+            fock_orth_p12dt = 2 * self.fock_orth - self.fock_orth_n12dt
+            for iteration in range(self.magnus_maxiter):
+                u = expm(-1j*self.timestep*fock_orth_p12dt)
+ 
+                mo_coeff_orth_pdt = np.matmul(u, self.mo_coeff_orth)
+                mo_coeff_ao_pdt = np.matmul(self.orth, mo_coeff_orth_pdt)
+                den_ao_pdt = self._scf.make_rdm1(mo_coeff=mo_coeff_ao_pdt, mo_occ=self.occ)
+
+                if (iteration > 0 and
+                abs(np.linalg.norm(mo_coeff_ao_pdt)
+                - np.linalg.norm(mo_coeff_ao_pdt_old)) < self.magnus_tolerance):
+        
+                    self.mo_coeff_orth = mo_coeff_orth_pdt
+                    self._scf.mo_coeff = mo_coeff_ao_pdt
+                    self.den_ao = den_ao_pdt
+        
+                    self.fock_orth_n12dt = fock_orth_p12dt
+                    break
+        
+                fock_orth_pdt = self.get_fock_orth(den_ao_pdt)
+        
+                fock_orth_p12dt = 0.5 * (self.fock_orth + fock_orth_pdt)
+        
+                mo_coeff_ao_pdt_old = mo_coeff_ao_pdt
+        
+                self._scf.mo_coeff = mo_coeff_ao_pdt
+                self.den_ao = den_ao_pdt
+            #update force:
+            self.nuc.force = ehrenfest_force.get_force(self._scf, self.den_ao)
+            #second velocity half step:
+            self.nuc.get_vel(self.timestep)
+            self.current_time += self.timestep
+        return self
+
+    def kernel_step(self):
+        self.temp_create_output_file()
+        fock_orth = self.get_fock_orth(self.den_ao)
+        fock_orth_old = fock_orth
+        udag = expm(1j * self.timestep * fock_orth)
+        #holding C(t-dt) and C(t+dt) between calculations:
+        mo_coeff_orth_new = np.matmul(np.linalg.inv(self.orth), self._scf.mo_coeff)
+        mo_coeff_orth_old = np.matmul(udag, mo_coeff_orth_new)
+        for i in range(0, self.total_steps):
+            #print to output file check:
+            if np.mod(i, self.frequency) == 0:
+                self.temp_update_output_file()
+                fock_orth_old = fock_orth
+                fock_orth = self.get_fock_orth(self.den_ao)
+                print('drive:')
+                drive = self.get_drive(mo_coeff_orth_old, fock_orth_old, fock_orth)
+                print(drive.shape)
+                print(drive)
+                #print(fock_orth)
+                print('den:')
+                print(self.den_ao)
             #first velocity half step:
             self.nuc.get_vel(self.timestep)
             #fock get fock at current time step and nuclear geometry
@@ -108,7 +316,42 @@ class RT_EHRENFEST(RT_SCF):
             self.nuc.force = ehrenfest_force.get_force(self._scf, self.den_ao)
             #second velocity half step:
             self.nuc.get_vel(self.timestep)
-            self.t += self.timestep
+            self.current_time += self.timestep
+        return self
+
+    def kernel_drive(self):
+        self.temp_create_output_file()
+        fock_orth = self.get_fock_orth(self.den_ao)
+        fock_orth_new = fock_orth 
+        mo_coeff_orth = np.matmul(np.linalg.inv(self.orth), self._scf.mo_coeff)
+        mo_coeff_orth_new = mo_coeff_orth 
+        for i in range(0, self.total_steps):
+            #print to output file check:
+            if np.mod(i, self.frequency) == 0:
+                self.temp_update_output_file()
+            #first velocity half step:
+            self.nuc.get_vel(self.timestep)
+            #position full step:
+            self.nuc.get_pos(self.timestep)
+            self.nuc.get_pos(self.timestep)
+            self.update_mol()
+            u = expm(-1j * self.timestep * fock_orth)
+            for n in range(5): 
+                if n==0:
+                    fock_orth_new = fock_orth
+                else:
+                    fock_orth_new = self.get_fock_orth(self.den_ao)
+                drive_orth = self.get_drive(mo_coeff_orth, fock_orth, fock_orth_new)
+                mo_coeff_orth_new = np.matmul(u, mo_coeff_orth) - np.matmul(u, np.matmul(drive_orth, mo_coeff_orth))
+                self._scf.mo_coeff = np.matmul(self.orth, mo_coeff_orth_new)
+                self.den_ao = self._scf.make_rdm1(mo_coeff = self._scf.mo_coeff, mo_occ = self._scf.mo_occ)
+            fock_orth = self.get_fock_orth(self.den_ao)
+            mo_coeff_orth = mo_coeff_orth_new
+            #update force:
+            self.nuc.force = ehrenfest_force.get_force(self._scf, self.den_ao)
+            #second velocity half step:
+            self.nuc.get_vel(self.timestep)
+            self.current_time += self.timestep
         return self
 
     def kernel_abinit(self):
@@ -130,8 +373,29 @@ class RT_EHRENFEST(RT_SCF):
             self.nuc.force = ehrenfest_force.get_force(self._scf, self.den_ao)
             #second velocity half step:
             self.nuc.get_vel(self.timestep)
-            self.t += self.timestep
+            self.current_time += self.timestep
         return self
+
+#    def get_drive(self, mo_coeff_orth, fock_orth, fock_orth_new, pts=69):
+#        tau_ar = np.linspace(0., self.timestep, pts)
+#        Nbasis = mo_coeff_orth.shape[0]
+#        drive_ar = np.zeros((pts, Nbasis, Nbasis), dtype=complex)
+#        for i in range(pts):
+#            drive_ar[i] = np.linalg.multi_dot([expm(1j * tau_ar[i] * fock_orth), fock_orth_new - fock_orth, expm(-1j * tau_ar[i] * fock_orth)]) * tau_ar[i]
+#        return -1j / self.timestep * np.linalg.multi_dot([expm(-1j * self.timestep * fock_orth), np.trapz(drive_ar, tau_ar, axis=0), mo_coeff_orth])
+
+    def get_drive(self, mo_coeff_orth, fock_orth, fock_orth_new, pts=9969):
+        tau_ar = np.linspace(0., self.timestep, pts)
+        Nbasis = mo_coeff_orth.shape[-1]
+        drive_ar = np.zeros((pts, 2, Nbasis, Nbasis), dtype=complex)
+        print(drive_ar.shape)
+        print(drive_ar[24,0].shape)
+        for i in range(pts):
+            drive_ar[i,0] = np.linalg.multi_dot([expm(1j * tau_ar[i] * fock_orth[0]), fock_orth_new[0] - fock_orth[0], expm(-1j * tau_ar[i] * fock_orth[0])]) * tau_ar[i]
+            drive_ar[i,1] = np.linalg.multi_dot([expm(1j * tau_ar[i] * fock_orth[1]), fock_orth_new[1] - fock_orth[1], expm(-1j * tau_ar[i] * fock_orth[1])]) * tau_ar[i]
+        return -1j / self.timestep * np.matmul(expm(-1j * self.timestep * fock_orth), np.matmul(np.trapz(drive_ar, tau_ar, axis=0), mo_coeff_orth))
+
+
 
     def temp_create_output_file(self):
         pos_file = open(F'{self.filename}' + '_pos.txt','w')
@@ -154,7 +418,7 @@ class RT_EHRENFEST(RT_SCF):
         np.savetxt(vel_file, self.nuc.vel, '%20.8e'); vel_file.write('\n')
         np.savetxt(force_file, self.nuc.force, '%20.8e'); force_file.write('\n')
         #norm = np.trace(np.linalg.multi_dot([np.linalg.inv(self.orth), self.den_ao, np.linalg.inv(self.orth.T)])); print(norm)
-        t_out = self.t
+        t_out = self.current_time
         Eelec = self._scf.energy_elec(dm=self.den_ao)[0]
         Vnuc = self._scf.energy_nuc()
         Tnuc = self.nuc.get_ke()
