@@ -5,7 +5,7 @@ from pyscf import gto, dft, scf
 Nuclear object for real-time SCF
 '''
 
-class rt_nuc:
+class NUC:
     def __init__(self, mol):
         self.nnuc = len(mol._atom)
         self.basis = mol.basis
