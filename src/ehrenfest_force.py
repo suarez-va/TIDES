@@ -59,10 +59,10 @@ def grad_elec_restricted(mf_grad, den_ao=None, etilde=None, v=None, Vinv=None):
 
         de[k] += (numpy.einsum('xij,ji->x', vhf.real[:,p0:p1,:], den_ao.real[:,p0:p1]) - numpy.einsum('xij,ji->x', vhf.imag[:,p0:p1,:], den_ao.imag[:,p0:p1])) * 2        
 
-        dStilde_bra = numpy.einsum('ji,xjk,kl->xil', v[p0:p1], dS[:,p0:p1], v); dStilde_ket = numpy.einsum('xij->xji', dStilde_bra)
+        dStilde_bra = numpy.einsum('xik,kl->xil', numpy.einsum('ji,xjk->xik', v[p0:p1], dS[:,p0:p1]), v); dStilde_ket = numpy.einsum('xij->xji', dStilde_bra)
         dStilde = dStilde_bra + dStilde_ket
         dVtilde = numpy.einsum('ij,xij->xij', etilde, dStilde)
-        dV = numpy.einsum('ij,xjk,lk->xil', v, dVtilde, v)
+        dV = numpy.einsum('xik,lk->xil', numpy.einsum('ij,xjk->xik', v, dVtilde), v)
         VinvdV = numpy.einsum('ij,xjk->xik', Vinv, dV)
         PF = numpy.einsum('ij,jk->ik', den_ao, fock_ao)
         de[k] += -2 * numpy.einsum('xij,ji->x', VinvdV, PF).real
@@ -103,10 +103,10 @@ def grad_elec_unrestricted(mf_grad, den_ao=None, etilde=None, v=None, Vinv=None)
 
         de[k] += (numpy.einsum('sxij,sji->x', vhf.real[:,:,p0:p1,:], den_ao.real[:,:,p0:p1]) - numpy.einsum('sxij,sji->x', vhf.imag[:,:,p0:p1,:], den_ao.imag[:,:,p0:p1])) * 2
 
-        dStilde_bra = numpy.einsum('ji,xjk,kl->xil', v[p0:p1], dS[:,p0:p1], v); dStilde_ket = numpy.einsum('xij->xji', dStilde_bra)
+        dStilde_bra = numpy.einsum('xik,kl->xil', numpy.einsum('ji,xjk->xik', v[p0:p1], dS[:,p0:p1]), v); dStilde_ket = numpy.einsum('xij->xji', dStilde_bra)
         dStilde = dStilde_bra + dStilde_ket
         dVtilde = numpy.einsum('ij,xij->xij', etilde, dStilde)
-        dV = numpy.einsum('ij,xjk,lk->xil', v, dVtilde, v)
+        dV = numpy.einsum('xik,lk->xil', numpy.einsum('ij,xjk->xik', v, dVtilde), v)
         VinvdV = numpy.einsum('ij,xjk->xik', Vinv, dV)
         PF = numpy.einsum('sij,sjk->ik', den_ao, fock_ao)
         de[k] += -2 * numpy.einsum('xij,ji->x', VinvdV, PF).real

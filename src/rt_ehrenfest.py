@@ -83,16 +83,68 @@ class RT_EHRENFEST(RT_SCF):
         Omega = self.get_omega()
         self.fock = self._scf.get_fock(dm=den_ao)
         if self.potential: self.applypotential()
-        #return np.matmul(self.orth.T, np.matmul(self.fock - 1j * Omega, self.orth))
-        return np.matmul(self.orth.T, np.matmul(self.fock, self.orth))
+        return np.matmul(self.orth.T, np.matmul(self.fock - 1j * Omega, self.orth))
+        #return np.matmul(self.orth.T, np.matmul(self.fock, self.orth))
 
     def rotate_coeff_to_orth(self, coeff_ao):
-        return np.matmul(np.linalg.inv(self.orth), coeff_ao)
+        coeff_orth = np.matmul(np.linalg.inv(self.orth), coeff_ao)
+        current_N = np.mod(int(self.current_time / self.timestep), self.Ne_step * self.N_step)
+        current_Ne = np.mod(current_N, self.Ne_step)
+        if current_N == 0: # k = 0, j = 0
+            self.nuc.get_vel(0.5 * self.N_step * self.Ne_step * self.timestep)
+            self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
+            self.update_mol()
+        elif current_Ne == 0: # k = 0, j != 0
+            self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
+            self.update_mol()
+        elif current_N == self.N_step * self.Ne_step - 1: # k = Ne_step-1, j = N_step-1
+            self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
+            self.update_mol()
+            self.nuc.get_vel(0.5 * self.N_step * self.Ne_step * self.timestep)
+        elif current_Ne == self.Ne_step - 1: # k = Ne_step-1, j != N_step-1
+            self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
+            self.update_mol()
+        return coeff_orth
 
     def rotate_coeff_to_ao(self, coeff_orth):
         return np.matmul(self.orth, coeff_orth)
 
     def kernel(self, mo_coeff_print=None, match_indices_array=None):
+        rt_observables.remove_suppressed_observables(self)
+        self.temp_create_output_file()
+ 
+        integrate_function = rt_integrators.get_integrator(self)
+        if self.prop == "magnus_step":
+            self.mo_coeff_orth_old = self.rotate_coeff_to_orth(self._scf.mo_coeff)
+        if self.prop == "magnus_interpol":
+            self.fock_orth_n12dt = self.get_fock_orth(self.den_ao)
+            if not hasattr(self, 'magnus_tolerance'): self.magnus_tolerance = 1e-7
+            if not hasattr(self, 'magnus_maxiter'): self.magnus_maxiter = 15
+    
+        for i in range(0, self.N_step * self.Ne_step * self.total_steps):
+            if np.mod(i, self.N_step * self.Ne_step * self.frequency) == 0:
+                self.temp_update_output_file()
+                mo_coeff_print = update_fragments(self, match_indices_array) 
+                rt_observables.get_observables(self, mo_coeff_print)
+                update_chkfile(self)
+
+            integrate_function(self)
+            self.current_time += self.timestep
+            if np.mod(i, self.N_step * self.Ne_step) == 0: 
+                self.update_grad()
+                self.nuc.get_vel(-0.5 * self.N_step * self.Ne_step * self.timestep)
+                self.nuc.force = ehrenfest_force.get_force(self)
+                self.nuc.get_vel(0.5 * self.N_step * self.Ne_step * self.timestep)
+
+        self.temp_update_output_file()
+        mo_coeff_print = update_fragments(self, match_indices_array) 
+        rt_observables.get_observables(self, mo_coeff_print)  # Collect observables at final time
+        update_chkfile(self)
+
+
+# EVERYTHING BELOW IS JUNK!!!
+
+    def kernel_old(self, mo_coeff_print=None, match_indices_array=None):
         rt_observables.remove_suppressed_observables(self)
         self.temp_create_output_file()
  
@@ -138,8 +190,8 @@ class RT_EHRENFEST(RT_SCF):
         update_chkfile(self)
         return self
 
-# kernel_simple() should simplify to kernel() if Ne_step = N_step = 1
-    def kernel_simple(self):
+    # kernel_simple() should simplify to kernel() if Ne_step = N_step = 1
+    def kernel_old_simple(self):
         rt_observables.remove_suppressed_observables(self)
         self.temp_create_output_file()
 
@@ -179,8 +231,6 @@ class RT_EHRENFEST(RT_SCF):
         update_chkfile(self)
         return self
 
-
-# EVERYTHING BELOW IS JUNK!!!
 #
 #    def kernel_slice1(self):
 #        rt_observables.remove_suppressed_observables(self)
