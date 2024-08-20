@@ -20,14 +20,14 @@ class ElectricField:
         return self.amplitude
 
     def gaussian_energy(self, rt_mf):
-        return self.amplitude * ((np.exp(-1 * (rt_mf.current_time - self.center) ** 2 / \
+        return (self.amplitude * ((np.exp(-1 * (rt_mf.current_time - self.center) ** 2 / 
         (2 * self.width ** 2))) * np.sin(self.frequency * rt_mf.current_time
-                                        + self.phase))
+                                        + self.phase)))
 
     def hann_energy(self, rt_mf):
-        return self.amplitude * ((np.sin(np.pi / self.width * \
-        (rt_mf.current_time - self.center - self.width / 2))) ** 2 * \
-        np.sin(self.frequency * rt_mf.current_time + self.phase))
+        return (self.amplitude * ((np.sin(np.pi / self.width * 
+        (rt_mf.current_time - self.center - self.width / 2))) ** 2 * 
+        np.sin(self.frequency * rt_mf.current_time + self.phase)))
 
     def resonant_energy(self, rt_mf):
         return self.amplitude * np.sin(self.frequency * rt_mf.current_time + self.phase)
@@ -50,5 +50,10 @@ class ElectricField:
 
     def calculate_potential(self, rt_mf):
         energy = self.calculate_field_energy(rt_mf)
-        tdip = rt_mf._scf.mol.intor('int1e_r', comp=3)
-        return np.einsum('xij,x->ij',tdip, energy)
+        mol = rt_mf._scf.mol
+        charges = mol.atom_charges()
+        coords = mol.atom_coords()
+        nuc_charge_center = np.einsum('z,zx->x', charges, coords) / charges.sum()
+        mol.set_common_orig_(nuc_charge_center)
+        tdip = mol.intor('int1e_r', comp=3)
+        return np.einsum('xij,x->ij', tdip, energy)
