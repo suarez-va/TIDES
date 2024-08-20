@@ -64,6 +64,52 @@ def magnus_interpol(rt_mf):
     rt_mf.fock_orth = fock_orth_pdt
     rt_mf.fock_orth_n12dt = fock_orth_p12dt
 
+def magnus_interpol_temp(rt_mf):
+    '''
+    C'(t+dt) = U(t+0.5dt)C'(t)
+    U(t+0.5dt) = exp(-i*dt*F')
+
+    1. Extrapolate F'(t+0.5dt)
+    2. Propagate
+    3. Build new F'(t+dt), interpolate new F'(t+0.5dt)
+    4. Repeat propagation and interpolation until convergence
+    '''
+
+    fock_orth_p12dt = 2 * rt_mf.fock_orth - rt_mf.fock_orth_n12dt
+
+    for iteration in range(rt_mf.magnus_maxiter):
+        u = expm(-1j*rt_mf.timestep*fock_orth_p12dt)
+
+        mo_coeff_orth_pdt = np.matmul(u, rt_mf.mo_coeff_orth)
+        mo_coeff_ao_pdt = rt_mf.rotate_coeff_to_ao(mo_coeff_orth_pdt)
+        den_ao_pdt = rt_mf._scf.make_rdm1(mo_coeff=mo_coeff_ao_pdt,
+                                          mo_occ=rt_mf.occ)
+        if (iteration > 0 and
+        abs(np.linalg.norm(mo_coeff_ao_pdt)
+        - np.linalg.norm(mo_coeff_ao_pdt_old)) < rt_mf.magnus_tolerance):
+
+            rt_mf._scf.mo_coeff = mo_coeff_ao_pdt
+            rt_mf.den_ao = den_ao_pdt
+
+            rt_mf.mo_coeff_orth = mo_coeff_orth_pdt
+            rt_mf.fock_orth_n12dt = fock_orth_p12dt
+            rt_mf.fock_orth = fock_orth_pdt
+            break
+
+        rt_mf.current_time += rt_mf.timestep
+        fock_orth_pdt = rt_mf.get_fock_orth(den_ao_pdt)
+        rt_mf.current_time -= rt_mf.timestep
+
+        fock_orth_p12dt = 0.5 * (rt_mf.fock_orth + fock_orth_pdt)
+
+        mo_coeff_ao_pdt_old = mo_coeff_ao_pdt
+
+        rt_mf._scf.mo_coeff = mo_coeff_ao_pdt
+        rt_mf.den_ao = den_ao_pdt
+    rt_mf.mo_coeff_orth = mo_coeff_orth_pdt
+    rt_mf.fock_orth_n12dt = fock_orth_p12dt
+    rt_mf.fock_orth = fock_orth_pdt
+
 def rk4(rt_mf):
     '''
     C'(t + dt) = C'(t) + (k1/6 + k2/3 + k3/3 + k4/6)
@@ -97,6 +143,7 @@ def rk4(rt_mf):
 INTEGRATORS = {
     'magnus_step' : magnus_step,
     'magnus_interpol' : magnus_interpol,
+    'magnus_interpol_temp' : magnus_interpol_temp,
     'rk4' : rk4,
 }
 

@@ -1,6 +1,7 @@
 import numpy as np
 from pyscf.tools import molden
 from pyscf.lo.orth import orth_ao
+from pyscf import gto
 import scipy
 
 '''
@@ -112,4 +113,27 @@ def occ_sort(oocc):
         else:
             nvirt.append(i)
     return tuple(nocc + nvirt)
+
+def read_mol(mol):
+    _atom = mol._atom
+    basis = mol.basis
+    labels = [_atom[i][0] for i in range(len(_atom))]
+    pos = [mol._atom[i][1] for i in range(len(_atom))]
+    return basis, labels, pos
+ 
+def write_mol(basis, labels, pos):
+        atom_str = '\n '
+        for index, R in enumerate(pos):
+            atom_str += labels[index]
+            atom_str += '    '
+            atom_str += str(R[0])
+            atom_str += '    '
+            atom_str += str(R[1])
+            atom_str += '    '
+            atom_str += str(R[2])
+            atom_str += '\n '
+        mol = gto.Mole(atom = atom_str, unit = 'Bohr')
+        mol.basis = basis
+        mol.build()
+        return mol
 
