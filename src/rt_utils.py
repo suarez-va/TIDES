@@ -28,6 +28,7 @@ def input_fragments(rt_mf, *fragments):
     for index, frag in enumerate(fragments):
         match_indices = match_fragment_atom(rt_mf._scf, frag)
         mask_basis = mask_fragment_basis(rt_mf._scf, match_indices)
+        frag.match_indices = match_indices
         rt_mf.fragments[frag] = mask_basis
 
 def restart_from_chkfile(rt_mf):

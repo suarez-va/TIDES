@@ -54,8 +54,8 @@ class RT_SCF:
             if filename is None:
                 self.chkfile = "RT_CHKFILE.txt"
             else:
-                self.chkfile = "{filename}_CHKFILE.txt"
-
+                self.chkfile = f"{filename}_CHKFILE.txt"
+            
             self.current_time = 0
         
         self.den_ao = self._scf.make_rdm1(mo_occ=self.occ)
@@ -81,11 +81,19 @@ class RT_SCF:
             self.fock += v_ext.calculate_potential(self)
 
     def kernel(self, mo_coeff_print=None):
-        if mo_coeff_print is None: mo_coeff_print = self._scf.mo_coeff
+
+        if mo_coeff_print is None: 
+            if hasattr(self, 'mo_coeff_print'):
+                pass
+            else:
+                self.mo_coeff_print = self._scf.mo_coeff
+        else:
+            self.mo_coeff_print = mo_coeff_print
+
         self.log.note("Starting Propagation")
 
         try:
-            rt_scf_prop.propagate(self, mo_coeff_print)
+            rt_scf_prop.propagate(self)
         finally:
             rt_scf_cleanup.finalize(self)
         

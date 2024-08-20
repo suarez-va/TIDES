@@ -22,35 +22,27 @@ def init_observables(rt_mf):
         'mo_occ'  : [get_mo_occ, rt_output.print_mo_occ],
     }
 
-    rt_mf.time = []
-    rt_mf.energy = []
-    rt_mf.charge = []
-    rt_mf.dipole = []
-    rt_mf.mag = []
-    rt_mf.mo_occ = []
 
 def remove_suppressed_observables(rt_mf):
     for key, print_value in rt_mf.observables.items():
         if not print_value:
             del rt_mf.observables_functions[key]
-            delattr(rt_mf, key)
 
-def get_observables(rt_mf, mo_coeff_print):
-    rt_mf.time.append(rt_mf.current_time)
+def get_observables(rt_mf):
     for key, function in rt_mf.observables_functions.items():
-          function[0](rt_mf, rt_mf.den_ao, mo_coeff_print)
+          function[0](rt_mf, rt_mf.den_ao)
 
     rt_output.update_output(rt_mf)
 
-def get_energy(rt_mf, den_ao, *args):
+def get_energy(rt_mf, den_ao):
     energy = []
     energy.append(rt_mf._scf.energy_tot(dm=den_ao))
     for frag, mask in rt_mf.fragments.items():
         energy.append(frag.energy_tot(dm=den_ao[mask]))
 
-    rt_mf.energy.append(energy)
+    rt_mf.energy = energy
 
-def get_charge(rt_mf, den_ao, *args):
+def get_charge(rt_mf, den_ao):
     # charge = tr(PaoS)
     charge = []
     if rt_mf.nmat == 2:
@@ -62,30 +54,30 @@ def get_charge(rt_mf, den_ao, *args):
         for frag, mask in rt_mf.fragments.items():
             charge.append(np.trace(np.matmul(den_ao,rt_mf.ovlp)[mask]))
     
-    rt_mf.charge.append(charge)
+    rt_mf.charge = charge
 
-def get_mo_occ(rt_mf, den_ao, mo_coeff_print, *args):
+def get_mo_occ(rt_mf, den_ao):
     # P_mo = C+SP_aoSC
     SP_aoS = np.matmul(rt_mf.ovlp,np.matmul(den_ao,rt_mf.ovlp))
     if rt_mf.nmat == 2:
-        mo_coeff_print_transpose = np.stack((mo_coeff_print[0].T, mo_coeff_print[1].T))
-        den_mo = np.matmul(mo_coeff_print_transpose,np.matmul(SP_aoS,mo_coeff_print))
+        mo_coeff_print_transpose = np.stack((rt_mf.mo_coeff_print[0].T, rt_mf.mo_coeff_print[1].T))
+        den_mo = np.matmul(mo_coeff_print_transpose,np.matmul(SP_aoS,rt_mf.mo_coeff_print))
         den_mo = np.real(np.sum(den_mo,axis=0))
     else:
-        den_mo = np.matmul(mo_coeff_print.T, np.matmul(SP_aoS,mo_coeff_print))
+        den_mo = np.matmul(rt_mf.mo_coeff_print.T, np.matmul(SP_aoS,rt_mf.mo_coeff_print))
         den_mo = np.real(den_mo)
 
-    rt_mf.mo_occ.append(np.diagonal(den_mo))
+    rt_mf.mo_occ = np.diagonal(den_mo)
 
-def get_dipole(rt_mf, den_ao, *args):
+def get_dipole(rt_mf, den_ao):
     dipole = []
     dipole.append(rt_mf._scf.dip_moment(rt_mf._scf.mol, rt_mf.den_ao,'A.U.', 1))
     for frag, mask in rt_mf.fragments.items():
         dipole.append(frag.dip_moment(frag.mol, den_ao[mask], 'A.U.', 1))
     
-    rt_mf.dipole.append(dipole)
+    rt_mf.dipole = dipole
 
-def get_mag(rt_mf, den_ao, *args):
+def get_mag(rt_mf, den_ao):
     mag = [] 
     Nsp = int(np.shape(rt_mf.ovlp)[0] / 2)
     
@@ -104,4 +96,4 @@ def get_mag(rt_mf, den_ao, *args):
         magz = np.sum((frag_den_ao[:Nsp, :Nsp] - frag_den_ao[Nsp:, Nsp:]) * frag_ovlp[:Nsp,:Nsp])
         mag.append([magx, magy, magz])
     
-    rt_mf.mag.append(mag)
+    rt_mf.mag = mag
