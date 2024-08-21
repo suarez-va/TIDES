@@ -31,30 +31,30 @@ def input_fragments(rt_mf, *fragments):
         frag.match_indices = match_indices
         rt_mf.fragments[frag] = mask_basis
 
-def update_fragments(rt_mf, match_indices_array=None):
+def update_fragments(rt_ehrenfest, match_indices_array=None):
     if match_indices_array is not None:
-        rt_mf.fragments = {}
+        rt_ehrenfest.fragments = {}
         fragments = []
-        basis, labels, pos = read_mol(rt_mf._scf.mol)
+        basis, labels, pos = read_mol(rt_ehrenfest._scf.mol)
         for index, match_indices in enumerate(match_indices_array):
             frag_labels = [labels[i] for i in match_indices]
             frag_pos = [pos[i] for i in match_indices]
             frag_mol = write_mol(basis, frag_labels, frag_pos)
-            if rt_mf._scf.istype('RHF'): frag = scf.RHF(frag_mol)
-            elif rt_mf._scf.istype('RKS'): frag = scf.RKS(frag_mol)
-            elif rt_mf._scf.istype('UHF'): frag = scf.UHF(frag_mol)
-            elif rt_mf._scf.istype('UKS'): frag = scf.UKS(frag_mol)
-            elif rt_mf._scf.istype('GHF'): frag = scf.GHF(frag_mol)
-            elif rt_mf._scf.istype('GKS'): frag = scf.GKS(frag_mol)
+            if rt_ehrenfest._scf.istype('RHF'): frag = scf.RHF(frag_mol)
+            elif rt_ehrenfest._scf.istype('RKS'): frag = scf.RKS(frag_mol)
+            elif rt_ehrenfest._scf.istype('UHF'): frag = scf.UHF(frag_mol)
+            elif rt_ehrenfest._scf.istype('UKS'): frag = scf.UKS(frag_mol)
+            elif rt_ehrenfest._scf.istype('GHF'): frag = scf.GHF(frag_mol)
+            elif rt_ehrenfest._scf.istype('GKS'): frag = scf.GKS(frag_mol)
             frag.kernel() 
             fragments.append(frag)
-        input_fragments(rt_mf, *fragments)
-        if rt_mf._scf.istype('RHF'): mf_scf = scf.RHF(rt_mf_scf.mol)
-        elif rt_mf._scf.istype('RKS'): mf_scf = scf.RKS(rt_mf._scf.mol)
-        elif rt_mf._scf.istype('UHF'): mf_scf = scf.UHF(rt_mf._scf.mol)
-        elif rt_mf._scf.istype('UKS'): mf_scf = scf.UKS(rt_mf._scf.mol)
-        elif rt_mf._scf.istype('GHF'): mf_scf = scf.GHF(rt_mf._scf.mol)
-        elif rt_mf._scf.istype('GKS'): mf_scf = scf.GKS(rt_mf._scf.mol)
+        input_fragments(rt_ehrenfest, *fragments)
+        if rt_ehrenfest._scf.istype('RHF'): mf_scf = scf.RHF(rt_ehrenfest._scf.mol)
+        elif rt_ehrenfest._scf.istype('RKS'): mf_scf = scf.RKS(rt_ehrenfest._scf.mol)
+        elif rt_ehrenfest._scf.istype('UHF'): mf_scf = scf.UHF(rt_ehrenfest._scf.mol)
+        elif rt_ehrenfest._scf.istype('UKS'): mf_scf = scf.UKS(rt_ehrenfest._scf.mol)
+        elif rt_ehrenfest._scf.istype('GHF'): mf_scf = scf.GHF(rt_ehrenfest._scf.mol)
+        elif rt_ehrenfest._scf.istype('GKS'): mf_scf = scf.GKS(rt_ehrenfest._scf.mol)
         mf_scf.kernel()
         #mo_coeff_print = noscfbasis(mf_scf, *fragments)
         mo_coeff_print = mf_scf.mo_coeff

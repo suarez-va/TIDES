@@ -1,7 +1,7 @@
 import numpy as np
 
 '''
-Real-time SCF Output Functions
+Real-time Output Functions
 '''
 
 def update_output(rt_mf):
@@ -41,10 +41,8 @@ def print_mag(rt_mf):
     rt_mf.log.note(f"Total Magnetization [X, Y, Z]: {' '.join(map(str,np.real(mag[0])))} \n")
     if len(mag) > 1:
         for index, fragment in enumerate(mag[1:]):
- 
             rt_mf.log.note(f"Fragment {index + 1} Magnetization [X, Y, Z] (AU): {' '.join(map(str,fragment))} \n")
 
-            rt_mf.log.note(f"Fragment {index + 1} Magnetization [X, Y, Z] (AU): {fragment} \n")
 
 #def print_nuc(rt_mf):
 #    nuc = rt_mf.nuc
