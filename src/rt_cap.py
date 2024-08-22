@@ -1,7 +1,7 @@
 import numpy as np
 
 '''
-Real-time SCF Molecular Orbital Complex Absorbing Potential (CAP)
+Molecular Orbital Complex Absorbing Potential (CAP)
 '''
 
 
@@ -11,22 +11,30 @@ class MOCAP:
         self.emin = emin
         self.prefac = prefac
         self.maxval = maxval
+        self.ovlp = ovlp
+        self.thr = thr
 
-        normlz = np.power(np.diag(ovlp), -0.5)
-        Snorm = np.dot(np.diag(normlz), np.dot(ovlp, np.diag(normlz)))
+        self._calculate_orth()
+
+    def _calculate_orth(self, rt_mf=None):
+        if rt_mf is not None:
+            self.ovlp = rt_mf.ovlp
+
+        normlz = np.power(np.diag(self.ovlp), -0.5)
+        Snorm = np.dot(np.diag(normlz), np.dot(self.ovlp, np.diag(normlz)))
         Sval, Svec = np.linalg.eigh(Snorm)
 
-        self.y_orth = Svec[:,Sval>=thr] * np.sqrt(Sval[Sval>=thr])
+        self.y_orth = Svec[:,Sval>=self.thr] * np.sqrt(Sval[Sval>=self.thr])
         # Y = Xs^1/2 is needed to rotate damping matrix back to AO basis
         self.y_orth = np.dot(np.diag(normlz), self.y_orth)
 
     def calculate_potential(self, rt_mf):
         if rt_mf.nmat == 1:
-            return self.calc_cap(rt_mf, rt_mf.fock)
+            return self.calculate_cap(rt_mf, rt_mf.fock)
         else:
-            return np.stack((self.calc_cap(rt_mf, rt_mf.fock[0]), self.calc_cap(rt_mf, rt_mf.fock[1])))
+            return np.stack((self.calculate_cap(rt_mf, rt_mf.fock[0]), self.calculate_cap(rt_mf, rt_mf.fock[1])))
 
-    def calc_cap(self, rt_mf, fock):
+    def calculate_cap(self, rt_mf, fock):
         # Construct fock_orth without CAP
         fock_orth = np.dot(rt_mf.orth.T, np.dot(fock,rt_mf.orth))
 
@@ -53,6 +61,9 @@ class MOCAP:
         # Construct damping matrix
         damping_matrix = np.diag(damping_diagonal)
         damping_matrix = np.dot(mo_orth, np.dot(damping_matrix,mo_orth.T))
+
+        if rt_mf.istype('RT_EHRENFEST'):
+            self._calculate_orth()
 
         # Rotate back to ao basis
         damping_matrix_ao = np.dot(self.y_orth, np.dot(damping_matrix, self.y_orth.T))

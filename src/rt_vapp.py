@@ -1,7 +1,7 @@
 import numpy as np
 
 '''
-Real-time SCF Time-Dependent Applied Potential (Sample Electric Field)
+Real-time Time-Dependent Applied Potential (Sample Electric Field)
 '''
 
 class ElectricField:
@@ -55,5 +55,5 @@ class ElectricField:
         coords = mol.atom_coords()
         nuc_charge_center = np.einsum('z,zx->x', charges, coords) / charges.sum()
         mol.set_common_orig_(nuc_charge_center)
-        tdip = mol.intor('int1e_r', comp=3)
-        return np.einsum('xij,x->ij', tdip, energy)
+        tdip = -1 * mol.intor('int1e_r', comp=3)
+        return -1 * np.einsum('xij,x->ij', tdip, energy)
