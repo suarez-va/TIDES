@@ -16,7 +16,10 @@ class MOCAP:
 
         self._calculate_orth()
 
-    def _calculate_orth(self):
+    def _calculate_orth(self, rt_mf=None):
+        if rt_mf is not None:
+            self.ovlp = rt_mf.ovlp
+
         normlz = np.power(np.diag(self.ovlp), -0.5)
         Snorm = np.dot(np.diag(normlz), np.dot(self.ovlp, np.diag(normlz)))
         Sval, Svec = np.linalg.eigh(Snorm)
