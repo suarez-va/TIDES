@@ -5,9 +5,9 @@ from pyscf.lib import logger
 import rt_scf_prop
 import rt_observables
 import rt_output
-import rt_scf_cleanup
 from rt_utils import restart_from_chkfile
-from pathlib import Path
+import os
+
 
 '''
 Real-time SCF Class
@@ -46,7 +46,8 @@ class RT_SCF:
 
         if chkfile is not None:
             self.chkfile = chkfile
-            if Path(self.chkfile).is_file():
+        
+            if os.path.exists(self.chkfile):
                 restart_from_chkfile(self)
             else:
                 self.current_time = 0
@@ -60,6 +61,12 @@ class RT_SCF:
         
         self.den_ao = self._scf.make_rdm1(mo_occ=self.occ)
         rt_observables.init_observables(self)
+
+    def istype(self, type_code):
+        if isinstance(type_code, type):
+            return isinstance(self, type_code)
+
+        return any(type_code == t.__name__ for t in self.__class__.__mro__)
 
     def get_fock_orth(self, den_ao):
         self.fock = self._scf.get_fock(dm=den_ao).astype(np.complex128)
@@ -94,7 +101,11 @@ class RT_SCF:
 
         try:
             rt_scf_prop.propagate(self)
+        except Exception:
+            raise
         finally:
-            rt_scf_cleanup.finalize(self)
-        
+            self.log.note("Done")
+            if hasattr(self, 'fh'):
+                self.fh.close()
+
         return self

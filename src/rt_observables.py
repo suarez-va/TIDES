@@ -2,7 +2,7 @@ import numpy as np
 import rt_output
 
 '''
-Real-time SCF Observable Functions
+Real-time Observable Functions
 '''
 
 def init_observables(rt_mf):
@@ -24,6 +24,9 @@ def init_observables(rt_mf):
 
 
 def remove_suppressed_observables(rt_mf):
+    if rt_mf.observables['mag']:
+        assert rt_mf._scf.istype('GHF') | rt_mf._scf.istype('GKS')
+
     for key, print_value in rt_mf.observables.items():
         if not print_value:
             del rt_mf.observables_functions[key]

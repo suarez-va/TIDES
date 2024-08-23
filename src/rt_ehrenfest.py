@@ -39,6 +39,13 @@ class RT_EHRENFEST(RT_SCF):
         #self.nuc.force = ehrenfest_force.get_force(self)
 
     #for some reason updating the mol object does not update the 2 electron integrals so we're temporarily reinstantiating
+
+    def istype(self, type_code):
+        if isinstance(type_code, type):
+            return isinstance(self, type_code)
+
+        return any(type_code == t.__name__ for t in self.__class__.__mro__)
+
     def update_mol(self):
         mo_coeff = self._scf.mo_coeff
         if self._scf.istype('RHF'): self._scf = scf.RHF(self.nuc.get_mol())
