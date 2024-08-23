@@ -31,36 +31,36 @@ def input_fragments(rt_mf, *fragments):
         frag.match_indices = match_indices
         rt_mf.fragments[frag] = mask_basis
 
-def update_fragments(rt_mf, match_indices_array=None):
-    if match_indices_array is not None:
-        rt_mf.fragments = {}
-        fragments = []
-        basis, labels, pos = read_mol(rt_mf._scf.mol)
-        for index, match_indices in enumerate(match_indices_array):
-            frag_labels = [labels[i] for i in match_indices]
-            frag_pos = [pos[i] for i in match_indices]
-            frag_mol = write_mol(basis, frag_labels, frag_pos)
-            if rt_mf._scf.istype('RHF'): frag = scf.RHF(frag_mol)
-            elif rt_mf._scf.istype('RKS'): frag = scf.RKS(frag_mol)
-            elif rt_mf._scf.istype('UHF'): frag = scf.UHF(frag_mol)
-            elif rt_mf._scf.istype('UKS'): frag = scf.UKS(frag_mol)
-            elif rt_mf._scf.istype('GHF'): frag = scf.GHF(frag_mol)
-            elif rt_mf._scf.istype('GKS'): frag = scf.GKS(frag_mol)
-            frag.kernel() 
-            fragments.append(frag)
-        input_fragments(rt_mf, *fragments)
-        if rt_mf._scf.istype('RHF'): mf_scf = scf.RHF(rt_mf_scf.mol)
-        elif rt_mf._scf.istype('RKS'): mf_scf = scf.RKS(rt_mf._scf.mol)
-        elif rt_mf._scf.istype('UHF'): mf_scf = scf.UHF(rt_mf._scf.mol)
-        elif rt_mf._scf.istype('UKS'): mf_scf = scf.UKS(rt_mf._scf.mol)
-        elif rt_mf._scf.istype('GHF'): mf_scf = scf.GHF(rt_mf._scf.mol)
-        elif rt_mf._scf.istype('GKS'): mf_scf = scf.GKS(rt_mf._scf.mol)
-        mf_scf.kernel()
-        #mo_coeff_print = noscfbasis(mf_scf, *fragments)
-        mo_coeff_print = mf_scf.mo_coeff
-    else:
-        mo_coeff_print = None
-    return mo_coeff_print
+def update_fragments(rt_mf):
+    # Update fragments to new geometry, solve scf problem, update mo_coeff_print basis
+
+    rt_mf.fragments = {}
+    fragments = []
+    basis, labels, pos = read_mol(rt_mf._scf.mol)
+    for frag_old, mask in rt_mf.fragments.items():
+        frag_labels = [labels[i] for i in frag_old.match_indices]
+        frag_pos = [pos[i] for i in frag_old.match_indices]
+        frag_mol = write_mol(basis, frag_labels, frag_pos)
+        if rt_mf._scf.istype('RHF'):   frag_new = scf.RHF(frag_mol)
+        elif rt_mf._scf.istype('RKS'): frag_new = scf.RKS(frag_mol)
+        elif rt_mf._scf.istype('UHF'): frag_new = scf.UHF(frag_mol)
+        elif rt_mf._scf.istype('UKS'): frag_new = scf.UKS(frag_mol)
+        elif rt_mf._scf.istype('GHF'): frag_new = scf.GHF(frag_mol)
+        elif rt_mf._scf.istype('GKS'): frag_new = scf.GKS(frag_mol)
+        frag_new.kernel() 
+        fragments.append(frag_new)
+    input_fragments(rt_mf, *fragments)
+
+    # Update mo_coeff_print from new fragmens:
+    if rt_mf._scf.istype('RHF'): mf_new = scf.RHF(rt_mf._scf.mol)
+    elif rt_mf._scf.istype('RKS'): mf_new = scf.RKS(rt_mf._scf.mol)
+    elif rt_mf._scf.istype('UHF'): mf_new = scf.UHF(rt_mf._scf.mol)
+    elif rt_mf._scf.istype('UKS'): mf_new = scf.UKS(rt_mf._scf.mol)
+    elif rt_mf._scf.istype('GHF'): mf_new = scf.GHF(rt_mf._scf.mol)
+    elif rt_mf._scf.istype('GKS'): mf_new = scf.GKS(rt_mf._scf.mol)
+    mf_new.kernel()
+    #rt_mf.mo_coeff_print = noscfbasis(mf_new, *fragments)
+    rt_mf.mo_coeff_print = mf_new.mo_coeff
 
 def restart_from_chkfile(rt_mf):
     with open(rt_mf.chkfile, 'r') as f:

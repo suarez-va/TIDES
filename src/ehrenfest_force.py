@@ -11,10 +11,10 @@ from scipy.linalg import fractional_matrix_power
 def get_force(rt_mf):
     grad_nuc = rt_mf._grad.grad_nuc()
 
+    v = rt_mf.evecs
     sqrt_e = numpy.sqrt(rt_mf.evals)
     etilde = 1. / (sqrt_e[:, numpy.newaxis] + sqrt_e[numpy.newaxis, :])
-    Vinv = rt_mf.orth
-    v = rt_mf.evecs
+    Vinv = numpy.linalg.multi_dot([v, numpy.diag(1. / sqrt_e), v.T])
 
     if rt_mf._scf.istype('RHF') | rt_mf._scf.istype('RKS'):
         grad_elec = grad_elec_restricted(rt_mf._grad, rt_mf.den_ao, etilde, v, Vinv)
@@ -117,7 +117,7 @@ def grad_lowdin(mol):
     S = mol.intor("int1e_ovlp")
     Vinv = fractional_matrix_power(S, -0.5)
     e, v = numpy.linalg.eigh(S)
-    sqrt_e = np.sqrt(e)
+    sqrt_e = numpy.sqrt(e)
     etilde = 1. / (sqrt_e[:, numpy.newaxis] + sqrt_e[numpy.newaxis, :])
     return etilde, v, Vinv
 

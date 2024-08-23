@@ -10,7 +10,7 @@ class NUC:
         self.nnuc = len(mol._atom)
         self.basis = mol.basis
         self.labels = np.array([mol._atom[i][0] for i in range(self.nnuc)])
-        self.mass = 1836 * np.array([np.array(mol.atom_mass_list())[i] * np.ones(3) for i in range(self.nnuc)])
+        self.mass = 1836000000000000 * np.array([np.array(mol.atom_mass_list())[i] * np.ones(3) for i in range(self.nnuc)])
         self.pos = np.array([mol._atom[i][1] for i in range(self.nnuc)])
         self.vel = np.zeros((self.nnuc, 3))
         self.force = np.zeros((self.nnuc, 3))
