@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.linalg import inv
 
 '''
 Molecular Orbital Complex Absorbing Potential (CAP)
@@ -13,20 +14,6 @@ class MOCAP:
         self.maxval = maxval
         self.ovlp = ovlp
         self.thr = thr
-
-        self._calculate_orth()
-
-    def _calculate_orth(self, rt_mf=None):
-        if rt_mf is not None:
-            self.ovlp = rt_mf.ovlp
-
-        normlz = np.power(np.diag(self.ovlp), -0.5)
-        Snorm = np.dot(np.diag(normlz), np.dot(self.ovlp, np.diag(normlz)))
-        Sval, Svec = np.linalg.eigh(Snorm)
-
-        self.y_orth = Svec[:,Sval>=self.thr] * np.sqrt(Sval[Sval>=self.thr])
-        # Y = Xs^1/2 is needed to rotate damping matrix back to AO basis
-        self.y_orth = np.dot(np.diag(normlz), self.y_orth)
 
     def calculate_potential(self, rt_mf):
         if rt_mf.nmat == 1:
@@ -66,5 +53,6 @@ class MOCAP:
             self._calculate_orth()
 
         # Rotate back to ao basis
-        damping_matrix_ao = np.dot(self.y_orth, np.dot(damping_matrix, self.y_orth.T))
+        transform = inv(np.conj(rt_mf.orth.T))
+        damping_matrix_ao = np.dot(transform, np.dot(damping_matrix, transform.T))
         return 1j * damping_matrix_ao
