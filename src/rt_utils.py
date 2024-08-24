@@ -3,7 +3,7 @@ from basis_utils import match_fragment_atom, mask_fragment_basis, noscfbasis, re
 from pyscf import scf
 
 '''
-Real-time SCF Utilities
+Real-time Utility Functions
 '''
 
 def excite(rt_mf, excitation_alpha=None, excitation_beta=None):
