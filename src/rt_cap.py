@@ -7,19 +7,12 @@ Molecular Orbital Complex Absorbing Potential (CAP)
 
 
 class MOCAP:
-    def __init__(self, expconst, emin, prefac, maxval, ovlp, thr=1e-7):
+    def __init__(self, expconst, emin, prefac=1, maxval=100, thr=1e-7):
         self.expconst = expconst
         self.emin = emin
         self.prefac = prefac
         self.maxval = maxval
-        self.ovlp = ovlp
         self.thr = thr
-
-    def calculate_potential(self, rt_mf):
-        if rt_mf.nmat == 1:
-            return self.calculate_cap(rt_mf, rt_mf.fock)
-        else:
-            return np.stack((self.calculate_cap(rt_mf, rt_mf.fock[0]), self.calculate_cap(rt_mf, rt_mf.fock[1])))
 
     def calculate_cap(self, rt_mf, fock):
         # Construct fock_orth without CAP
@@ -52,3 +45,9 @@ class MOCAP:
         transform = inv(rt_mf.orth.T)
         damping_matrix_ao = np.dot(transform, np.dot(damping_matrix, transform.T))
         return 1j * damping_matrix_ao
+
+    def calculate_potential(self, rt_mf):
+        if rt_mf.nmat == 1:
+            return self.calculate_cap(rt_mf, rt_mf.fock_ao)
+        else:
+            return np.stack((self.calculate_cap(rt_mf, rt_mf.fock_ao[0]), self.calculate_cap(rt_mf, rt_mf.fock_ao[1])))

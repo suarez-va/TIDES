@@ -18,7 +18,7 @@ mf = dft.UKS(mol)
 mf.xc = 'PBE0'
 mf.kernel()
 
-rt_mf = RT_SCF(mf, 0.2, 1, 1250)
+rt_mf = RT_SCF(mf, 0.2, 250)
 rt_mf.observables.update(dipole=True)
 delta_field = ElectricField('delta', [0.0, 0.0, 0.0001])
 

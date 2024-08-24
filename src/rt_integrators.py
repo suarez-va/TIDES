@@ -2,7 +2,7 @@ import numpy as np
 from scipy.linalg import expm
 
 '''
-Real-time SCF Integrator Functions
+Real-time Integrator Functions
 '''
 
 def magnus_step(rt_mf):
@@ -33,7 +33,7 @@ def magnus_interpol(rt_mf):
     '''
 
     mo_coeff_orth = rt_mf.rotate_coeff_to_orth(rt_mf._scf.mo_coeff)
-    fock_orth_p12dt = 2 * rt_mf.fock_orth - rt_mf.fock_orth_n12dt
+    fock_orth_p12dt = 2 * rt_mf._fock_orth - rt_mf._fock_orth_n12dt
 
     for iteration in range(rt_mf.magnus_maxiter):
         u = expm(-1j*rt_mf.timestep*fock_orth_p12dt)
@@ -55,14 +55,14 @@ def magnus_interpol(rt_mf):
             rt_mf.fock_orth = fock_orth_pdt
             rt_mf.fock_orth_n12dt = fock_orth_p12dt
             break
-        fock_orth_p12dt = 0.5 * (rt_mf.fock_orth + fock_orth_pdt)
+        fock_orth_p12dt = 0.5 * (rt_mf._fock_orth + fock_orth_pdt)
 
         mo_coeff_ao_pdt_old = mo_coeff_ao_pdt
 
         rt_mf._scf.mo_coeff = mo_coeff_ao_pdt
         rt_mf.den_ao = den_ao_pdt
-    rt_mf.fock_orth = fock_orth_pdt
-    rt_mf.fock_orth_n12dt = fock_orth_p12dt
+    rt_mf._fock_orth = fock_orth_pdt
+    rt_mf._fock_orth_n12dt = fock_orth_p12dt
 
 def rk4(rt_mf):
     '''

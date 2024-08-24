@@ -5,9 +5,9 @@ import basis_utils
 import rt_ehrenfest
 from rt_cap import MOCAP
 
-dimer = gto.Mole(basis = 'augccpvdz')
-water1 = gto.Mole(basis = 'augccpvdz')
-water2 = gto.Mole(basis = 'augccpvdz')
+dimer = gto.Mole()#basis = 'augccpvdz')
+water1 = gto.Mole()#basis = 'augccpvdz')
+water2 = gto.Mole()#basis = 'augccpvdz')
 
 dimer.atom = '''
  O               -0.32314674    -1.47729686     0.00097471
@@ -32,12 +32,12 @@ dimer.build()
 water1.build()
 water2.build()
 
-#dimer = scf.UHF(dimer)
-#water1 = scf.UHF(water1)
-#water2 = scf.UHF(water2)
-dimer = scf.UKS(dimer); dimer.xc = 'PBE0'
-water1 = scf.UKS(water1); water1.xc = 'PBE0'
-water2 = scf.UKS(water2); water2.xc = 'PBE0'
+dimer = scf.UHF(dimer)
+water1 = scf.UHF(water1)
+water2 = scf.UHF(water2)
+#dimer = scf.UKS(dimer); dimer.xc = 'PBE0'
+#water1 = scf.UKS(water1); water1.xc = 'PBE0'
+#water2 = scf.UKS(water2); water2.xc = 'PBE0'
 #dimer = scf.UKS(dimer); dimer.xc = 'B3LYP' 
 #water1 = scf.UKS(water1); water1.xc = 'B3LYP' 
 #water2 = scf.UKS(water2); water2.xc = 'B3LYP' 
@@ -48,22 +48,22 @@ water2.kernel()
 
 # Calculate noscf basis to print orbital occupations in
 #noscf_orbitals = basis_utils.noscfbasis(dimer, water1, water2)
-noscf_orbitals = dimer.mo_coeff
+#noscf_orbitals = dimer.mo_coeff
 
-rt_water = rt_ehrenfest.RT_EHRENFEST(dimer, 0.01, 1, 1000, filename="H2O", prop="magnus_interpol_temp", orth=None, chkfile=None, verbose=3, Ne_step=10, N_step=10)
+rt_water = rt_ehrenfest.RT_Ehrenfest(dimer, 1, 1000, filename="H2O", prop="magnus_interpol", orth=None, frequency=1, chkfile=None, verbose=3, Ne_step=10, N_step=10)
 # Declare which observables to be calculated/printed
 rt_water.observables.update(energy=True, mo_occ=True, charge=True)
 
 # Create object for complex absorbing potential and add to rt object
-#CAP = MOCAP(0.5, 0.0477, 1.0, 10.0, dimer.get_ovlp())
-#rt_water.add_potential(CAP)
+CAP = MOCAP(0.5, 0.0477, 1.0, 10.0)#, dimer.get_ovlp())
+rt_water.add_potential(CAP)
 
 # Remove electron from 4th molecular orbital (in SCF basis)
 # Input the two water fragments for their charge to be calculated
-rt_utils.excite(rt_water, 10)
-rt_water._scf.mo_occ = rt_water.occ
-#rt_utils.input_fragments(rt_water, water1, water2)
+rt_utils.excite(rt_water, 4)
+#rt_water._scf.mo_occ = rt_water.occ
+rt_utils.input_fragments(rt_water, water1, water2)
 
 # Start calculation, send in noscf_orbitals to print
-rt_water.kernel(mo_coeff_print=noscf_orbitals, match_indices_array = [[0,1,2],[3,4,5]])
+rt_water.kernel()#mo_coeff_print=noscf_orbitals)#, match_indices_array = [[0,1,2],[3,4,5]])
 

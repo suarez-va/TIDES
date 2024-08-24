@@ -6,7 +6,7 @@ from basis_utils import read_mol
 Real-time Observable Functions
 '''
 
-def init_observables(rt_mf):
+def _init_observables(rt_mf):
     rt_mf.observables = {
         'energy'  : False,
         'charge'  : False,
@@ -16,26 +16,26 @@ def init_observables(rt_mf):
         'nuclei'  : False,
     }
 
-    rt_mf.observables_functions = {
-        'energy'  : [get_energy, rt_output.print_energy],
-        'charge'  : [get_charge, rt_output.print_charge],
-        'dipole'  : [get_dipole, rt_output.print_dipole],
-        'mag'     : [get_mag, rt_output.print_mag],
-        'mo_occ'  : [get_mo_occ, rt_output.print_mo_occ],
-        'nuclei'  : [get_nuclei, rt_output.print_nuclei],
+    rt_mf._observables_functions = {
+        'energy'  : [get_energy, rt_output._print_energy],
+        'charge'  : [get_charge, rt_output._print_charge],
+        'dipole'  : [get_dipole, rt_output._print_dipole],
+        'mag'     : [get_mag, rt_output._print_mag],
+        'mo_occ'  : [get_mo_occ, rt_output._print_mo_occ],
+        'nuclei'  : [get_nuclei, rt_output._print_nuclei],
     }
 
 
-def remove_suppressed_observables(rt_mf):
+def _remove_suppressed_observables(rt_mf):
     if rt_mf.observables['mag']:
         assert rt_mf._scf.istype('GHF') | rt_mf._scf.istype('GKS')
 
     for key, print_value in rt_mf.observables.items():
         if not print_value:
-            del rt_mf.observables_functions[key]
+            del rt_mf._observables_functions[key]
 
 def get_observables(rt_mf):
-    for key, function in rt_mf.observables_functions.items():
+    for key, function in rt_mf._observables_functions.items():
           function[0](rt_mf, rt_mf.den_ao)
 
     rt_output.update_output(rt_mf)
@@ -48,7 +48,7 @@ def get_energy(rt_mf, den_ao):
     for frag, mask in rt_mf.fragments.items():
         energy.append(frag.energy_tot(dm=den_ao[mask]))
 
-    rt_mf.energy = energy
+    rt_mf._energy = energy
 
 def get_charge(rt_mf, den_ao):
     # charge = tr(PaoS)
@@ -62,7 +62,7 @@ def get_charge(rt_mf, den_ao):
         for frag, mask in rt_mf.fragments.items():
             charge.append(np.trace(np.matmul(den_ao,rt_mf.ovlp)[mask]))
     
-    rt_mf.charge = charge
+    rt_mf._charge = charge
 
 def get_mo_occ(rt_mf, den_ao):
     # P_mo = C+SP_aoSC
@@ -75,7 +75,7 @@ def get_mo_occ(rt_mf, den_ao):
         den_mo = np.matmul(rt_mf.mo_coeff_print.T, np.matmul(SP_aoS,rt_mf.mo_coeff_print))
         den_mo = np.real(den_mo)
 
-    rt_mf.mo_occ = np.diagonal(den_mo)
+    rt_mf._mo_occ = np.diagonal(den_mo)
 
 def get_dipole(rt_mf, den_ao):
     dipole = []
@@ -83,7 +83,7 @@ def get_dipole(rt_mf, den_ao):
     for frag, mask in rt_mf.fragments.items():
         dipole.append(frag.dip_moment(frag.mol, den_ao[mask], 'A.U.', 1))
     
-    rt_mf.dipole = dipole
+    rt_mf._dipole = dipole
 
 def get_mag(rt_mf, den_ao):
     mag = [] 
@@ -104,7 +104,7 @@ def get_mag(rt_mf, den_ao):
         magz = np.sum((frag_den_ao[:Nsp, :Nsp] - frag_den_ao[Nsp:, Nsp:]) * frag_ovlp[:Nsp,:Nsp])
         mag.append([magx, magy, magz])
     
-    rt_mf.mag = mag
+    rt_mf._mag = mag
 
 def get_nuclei(rt_mf, den_ao):
     # So I'm thinking max verbosity: nuclei[0] = labels, nuclei[1]=pos, nuclei[2]=vel, nuclei[3]=force, match atom label to fragments H1 O2 ect.
@@ -112,4 +112,4 @@ def get_nuclei(rt_mf, den_ao):
     basis, labels, pos = read_mol(rt_mf._scf.mol)
     nuclei.append([labels])
     nuclei.append(pos)
-    rt_mf.nuclei = nuclei
+    rt_mf._nuclei = nuclei
