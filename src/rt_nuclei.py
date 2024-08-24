@@ -1,5 +1,6 @@
 import numpy as np
 from pyscf import gto, dft, scf
+from basis_utils import read_mol, write_mol
 
 '''
 Nuclear object for real-time SCF
@@ -8,33 +9,22 @@ Nuclear object for real-time SCF
 class NUC:
     def __init__(self, mol):
         self.nnuc = len(mol._atom)
-        self.basis = mol.basis
-        self.labels = np.array([mol._atom[i][0] for i in range(self.nnuc)])
+        basis, labels, pos = read_mol(mol)
+        self.basis = basis
+        self.labels = labels 
+        self.pos = np.array(pos)
         self.mass = 1836 * np.array([np.array(mol.atom_mass_list())[i] * np.ones(3) for i in range(self.nnuc)])
-        self.pos = np.array([mol._atom[i][1] for i in range(self.nnuc)])
         self.vel = np.zeros((self.nnuc, 3))
         self.force = np.zeros((self.nnuc, 3))
 
     def get_mol(self):
-        atom_str = '\n '
-        for i in range(self.nnuc):
-            atom_str += self.labels[i]
-            atom_str += '    '
-            atom_str += str(self.pos[i][0])
-            atom_str += '    '
-            atom_str += str(self.pos[i][1])
-            atom_str += '    '
-            atom_str += str(self.pos[i][2])
-            atom_str += '\n '
-        new_mol = gto.Mole(atom = atom_str, unit = 'Bohr', basis = self.basis)
-        new_mol.build()
-        return new_mol
+        return write_mol(self.basis, self.labels, self.pos)
 
     def get_ke(self):
-        return np.sum(0.5 * self.mass * self.vel * self.vel)
+        return np.sum(0.5 * self.mass * self.vel**2)
 
     def sample_vel(self, beta):
-        np.random.seed(47)
+        #np.random.seed(47)
         self.vel = np.random.normal(scale = 1. / np.sqrt(beta * self.mass))
 
     # Position full step

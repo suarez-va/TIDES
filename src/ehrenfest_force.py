@@ -9,18 +9,19 @@ from pyscf.gto.mole import is_au
 from scipy.linalg import fractional_matrix_power
 
 def get_force(rt_ehrenfest):
-    grad_nuc = rt_ehrenfest._grad.grad_nuc()
+    rt_ehrenfest.update_grad()
 
+    v = rt_ehrenfest.evecs
     sqrt_e = numpy.sqrt(rt_ehrenfest.evals)
     etilde = 1. / (sqrt_e[:, numpy.newaxis] + sqrt_e[numpy.newaxis, :])
-    Vinv = rt_ehrenfest.orth
-    v = rt_ehrenfest.evecs
+    Vinv = numpy.linalg.multi_dot([v, numpy.diag(1. / sqrt_e), v.T])
 
-    if rt_ehrenfest._scf.istype('RHF') | rt_ehrenfest._scf.istype('RKS'):
+    grad_nuc = rt_ehrenfest._grad.grad_nuc()
+    if rt_ehrenfest._scf.istype('RHF'):
         grad_elec = grad_elec_restricted(rt_ehrenfest._grad, rt_ehrenfest.den_ao, etilde, v, Vinv)
-    elif rt_ehrenfest._scf.istype('UHF') | rt_ehrenfest._scf.istype('UKS'):
+    elif rt_ehrenfest._scf.istype('UHF'):
         grad_elec = grad_elec_unrestricted(rt_ehrenfest._grad, rt_ehrenfest.den_ao, etilde, v, Vinv)
-    elif rt_ehrenfest._scf.istype('GHF') | rt_ehrenfest._scf.istype('GKS'):
+    elif rt_ehrenfest._scf.istype('GHF'):
         #grad_elec = grad_elec_generalized(rt_ehrenfest._grad, rt_ehrenfest.den_ao, etilde, v, Vinv)
         raise Exception('Not Implemented')
     return -(grad_nuc + grad_elec)
@@ -117,7 +118,7 @@ def grad_lowdin(mol):
     S = mol.intor("int1e_ovlp")
     Vinv = fractional_matrix_power(S, -0.5)
     e, v = numpy.linalg.eigh(S)
-    sqrt_e = np.sqrt(e)
+    sqrt_e = numpy.sqrt(e)
     etilde = 1. / (sqrt_e[:, numpy.newaxis] + sqrt_e[numpy.newaxis, :])
     return etilde, v, Vinv
 
