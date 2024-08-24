@@ -88,9 +88,19 @@ class RT_SCF:
             self.fock += v_ext.calculate_potential(self)
 
     def kernel(self, mo_coeff_print=None):
+
+        if mo_coeff_print is None: 
+            if hasattr(self, 'mo_coeff_print'):
+                pass
+            else:
+                self.mo_coeff_print = self._scf.mo_coeff
+        else:
+            self.mo_coeff_print = mo_coeff_print
+
+        self.log.note("Starting Propagation")
+
         try:
-            self.log.note("Starting Propagation")
-            rt_scf_prop.propagate(self, mo_coeff_print)
+            rt_scf_prop.propagate(self)
         except Exception:
             raise
         finally:

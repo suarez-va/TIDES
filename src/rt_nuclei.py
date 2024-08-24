@@ -2,7 +2,7 @@ import numpy as np
 from pyscf import gto, dft, scf
 
 '''
-Nuclear Object for Real-Time Ehrenfest
+Nuclear object for real-time SCF
 '''
 
 class NUC:

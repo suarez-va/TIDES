@@ -2,7 +2,7 @@ import numpy as np
 from scipy.linalg import expm
 
 '''
-Real-time Integrator Functions
+Real-time SCF Integrator Functions
 '''
 
 def magnus_step(rt_mf):

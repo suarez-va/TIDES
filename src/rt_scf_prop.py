@@ -8,16 +8,7 @@ from rt_utils import update_chkfile
 Real-time SCF Propagator Loop
 '''
 
-def propagate(rt_scf, mo_coeff_print):
-    
-    if mo_coeff_print is None:
-        if hasattr(rt_scf, 'mo_coeff_print'):
-            pass
-        else:
-            rt_scf.mo_coeff_print = rt_scf._scf.mo_coeff
-    else:
-        rt_scf.mo_coeff_print = mo_coeff_print
-
+def propagate(rt_scf):
     rt_observables.remove_suppressed_observables(rt_scf)
 
     integrate_function = rt_integrators.get_integrator(rt_scf)
