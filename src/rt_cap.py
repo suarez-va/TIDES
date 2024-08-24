@@ -26,8 +26,7 @@ class MOCAP:
         fock_orth = np.dot(rt_mf.orth.T, np.dot(fock,rt_mf.orth))
 
         # Calculate MO energies
-        mo_energy, mo_orth = np.linalg.eig(fock_orth)
-        mo_energy = np.real(mo_energy)
+        mo_energy, mo_orth = np.linalg.eigh(fock_orth)
 
         # Construct damping terms
         damping_diagonal = []
@@ -47,12 +46,9 @@ class MOCAP:
 
         # Construct damping matrix
         damping_matrix = np.diag(damping_diagonal)
-        damping_matrix = np.dot(mo_orth, np.dot(damping_matrix,mo_orth.T))
-
-        if rt_mf.istype('RT_EHRENFEST'):
-            self._calculate_orth()
+        damping_matrix = np.dot(mo_orth, np.dot(damping_matrix, np.conj(mo_orth.T)))
 
         # Rotate back to ao basis
-        transform = inv(np.conj(rt_mf.orth.T))
+        transform = inv(rt_mf.orth.T)
         damping_matrix_ao = np.dot(transform, np.dot(damping_matrix, transform.T))
         return 1j * damping_matrix_ao

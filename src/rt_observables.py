@@ -1,5 +1,6 @@
 import numpy as np
 import rt_output
+from basis_utils import read_mol
 
 '''
 Real-time Observable Functions
@@ -12,6 +13,7 @@ def init_observables(rt_mf):
         'dipole'  : False,
         'mag'     : False,
         'mo_occ'  : False,
+        'nuclei'  : False,
     }
 
     rt_mf.observables_functions = {
@@ -20,6 +22,7 @@ def init_observables(rt_mf):
         'dipole'  : [get_dipole, rt_output.print_dipole],
         'mag'     : [get_mag, rt_output.print_mag],
         'mo_occ'  : [get_mo_occ, rt_output.print_mo_occ],
+        'nuclei'  : [get_nuclei, rt_output.print_nuclei],
     }
 
 
@@ -40,6 +43,8 @@ def get_observables(rt_mf):
 def get_energy(rt_mf, den_ao):
     energy = []
     energy.append(rt_mf._scf.energy_tot(dm=den_ao))
+    if rt_mf.istype('RT_EHRENFEST'):
+        energy[0] += rt_mf.nuc.get_ke()
     for frag, mask in rt_mf.fragments.items():
         energy.append(frag.energy_tot(dm=den_ao[mask]))
 
@@ -100,3 +105,11 @@ def get_mag(rt_mf, den_ao):
         mag.append([magx, magy, magz])
     
     rt_mf.mag = mag
+
+def get_nuclei(rt_mf, den_ao):
+    # So I'm thinking max verbosity: nuclei[0] = labels, nuclei[1]=pos, nuclei[2]=vel, nuclei[3]=force, match atom label to fragments H1 O2 ect.
+    nuclei = []
+    basis, labels, pos = read_mol(rt_mf._scf.mol)
+    nuclei.append([labels])
+    nuclei.append(pos)
+    rt_mf.nuclei = nuclei
