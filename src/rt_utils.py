@@ -32,8 +32,7 @@ def input_fragments(rt_mf, *fragments):
         rt_mf.fragments[frag] = mask_basis
 
 def update_fragments(rt_mf):
-    # Update fragments to new geometry, solve scf problem, update mo_coeff_print basis
-
+    # Update fragments to new geometry, solve scf problem
     rt_mf.fragments = {}
     fragments = []
     basis, labels, pos = read_mol(rt_mf._scf.mol)
@@ -41,23 +40,23 @@ def update_fragments(rt_mf):
         frag_labels = [labels[i] for i in frag_old.match_indices]
         frag_pos = [pos[i] for i in frag_old.match_indices]
         frag_mol = write_mol(basis, frag_labels, frag_pos)
-        if rt_mf._scf.istype('RHF'):   frag_new = scf.RHF(frag_mol)
-        elif rt_mf._scf.istype('RKS'): frag_new = scf.RKS(frag_mol)
+        if rt_mf._scf.istype('RKS'): frag_new = scf.RKS(frag_mol); frag_new.xc = frag_old.xc
+        elif rt_mf._scf.istype('RHF'): frag_new = scf.RHF(frag_mol)
+        elif rt_mf._scf.istype('UKS'): frag_new = scf.UKS(frag_mol); frag_new.xc = frag_old.xc
         elif rt_mf._scf.istype('UHF'): frag_new = scf.UHF(frag_mol)
-        elif rt_mf._scf.istype('UKS'): frag_new = scf.UKS(frag_mol)
+        elif rt_mf._scf.istype('GKS'): frag_new = scf.GKS(frag_mol); frag_new.xc = frag_old.xc
         elif rt_mf._scf.istype('GHF'): frag_new = scf.GHF(frag_mol)
-        elif rt_mf._scf.istype('GKS'): frag_new = scf.GKS(frag_mol)
         frag_new.kernel() 
         fragments.append(frag_new)
     input_fragments(rt_mf, *fragments)
 
     # Update mo_coeff_print from new fragmens:
-    if rt_mf._scf.istype('RHF'): mf_new = scf.RHF(rt_mf._scf.mol)
-    elif rt_mf._scf.istype('RKS'): mf_new = scf.RKS(rt_mf._scf.mol)
+    if rt_mf._scf.istype('RKS'): mf_new = scf.RKS(rt_mf._scf.mol); mf_new.xc = rt_mf._scf.xc
+    elif rt_mf._scf.istype('RHF'): mf_new = scf.RHF(rt_mf._scf.mol)
+    elif rt_mf._scf.istype('UKS'): mf_new = scf.UKS(rt_mf._scf.mol); mf_new.xc = rt_mf._scf.xc
     elif rt_mf._scf.istype('UHF'): mf_new = scf.UHF(rt_mf._scf.mol)
-    elif rt_mf._scf.istype('UKS'): mf_new = scf.UKS(rt_mf._scf.mol)
+    elif rt_mf._scf.istype('GKS'): mf_new = scf.GKS(rt_mf._scf.mol); mf_new.xc = rt_mf._scf.xc
     elif rt_mf._scf.istype('GHF'): mf_new = scf.GHF(rt_mf._scf.mol)
-    elif rt_mf._scf.istype('GKS'): mf_new = scf.GKS(rt_mf._scf.mol)
     mf_new.kernel()
     #rt_mf.mo_coeff_print = noscfbasis(mf_new, *fragments)
     rt_mf.mo_coeff_print = mf_new.mo_coeff

@@ -30,15 +30,9 @@ class RT_EHRENFEST(RT_SCF):
 
         self.current_time = 0
 
-        #reminder to use fractional_matrix_power and not the rounded off pyscf function
-        #self.update_mol()
-        S = self._scf.mol.intor_symmetric("int1e_ovlp")
-        s, V = np.linalg.eigh(S)
-        self.orth = np.matmul(V, np.diag(np.power(s, -0.5)))
-        #self.update_grad()
-        #self.nuc.force = ehrenfest_force.get_force(self)
-
-    #for some reason updating the mol object does not update the 2 electron integrals so we're temporarily reinstantiating
+        self.update_mol()
+        # Reminder to check if forces should be updated again after excite()
+        self.nuc.force = ehrenfest_force.get_force(self)
 
     def istype(self, type_code):
         if isinstance(type_code, type):
@@ -48,31 +42,30 @@ class RT_EHRENFEST(RT_SCF):
 
     def update_mol(self):
         mo_coeff = self._scf.mo_coeff
-        if self._scf.istype('RHF'): self._scf = scf.RHF(self.nuc.get_mol())
-        elif self._scf.istype('RKS'): self._scf = scf.RKS(self.nuc.get_mol())
+        if self._scf.istype('RKS'): xc = self._scf.xc; self._scf = scf.RKS(self.nuc.get_mol()); self._scf.xc = xc
+        elif self._scf.istype('RHF'): self._scf = scf.RHF(self.nuc.get_mol())
+        elif self._scf.istype('UKS'): xc = self._scf.xc; self._scf = dft.UKS(self.nuc.get_mol()); self._scf.xc = xc
         elif self._scf.istype('UHF'): self._scf = scf.UHF(self.nuc.get_mol())
-        elif self._scf.istype('UKS'): self._scf = dft.UKS(self.nuc.get_mol()); self._scf.xc = 'CAMB3LYP'
+        elif self._scf.istype('GKS'): xc = self._scf.xc; self._scf = scf.GKS(self.nuc.get_mol()); self._scf.xc = xc
         elif self._scf.istype('GHF'): self._scf = scf.GHF(self.nuc.get_mol())
-        elif self._scf.istype('GKS'): self._scf = scf.GKS(self.nuc.get_mol())
         self._scf.mo_coeff = mo_coeff
         self._scf.mo_occ = self.occ
-        #we should add a routine to RT_SCF maybe for setting the overlap, orthogonalization matrix and maybe holding onto eigen stuff from S matrix
-        self.ovlp = self._scf.mol.intor_symmetric("int1e_ovlp")
+        self.ovlp = self._scf.get_ovlp()
         self.evals, self.evecs = np.linalg.eigh(self.ovlp)
-        self.orth = np.matmul(self.evecs, np.diag(np.power(self.evals, -0.5)))
-        #self.orth = np.linalg.multi_dot([self.evecs, np.diag(np.power(self.evals, -0.5)), self.evecs.T])
-        #self.orth = fractional_matrix_power(self.ovlp, -0.5)
+        #self.orth = np.matmul(self.evecs, np.diag(np.power(self.evals, -0.5)))
+        self.orth = np.linalg.multi_dot([self.evecs, np.diag(np.power(self.evals, -0.5)), self.evecs.T])
         #self.orth = scf.addons.canonical_orth_(self.ovlp)
 
     def update_grad(self):
-        if self._scf.istype('RHF'): self._grad = self._scf.apply(grad.RHF)
-        elif self._scf.istype('RKS'): self._grad = self._scf.apply(grad.RKS)
-        elif self._scf.istype('UHF'): self._grad = self._scf.apply(grad.UHF)
+        if self._scf.istype('RKS'): self._grad = self._scf.apply(grad.RKS)
+        elif self._scf.istype('RHF'): self._grad = self._scf.apply(grad.RHF)
         elif self._scf.istype('UKS'): self._grad = self._scf.apply(grad.UKS)
-        elif self._scf.istype('GHF'): self._grad = self._scf.apply(grad.GHF)
+        elif self._scf.istype('UHF'): self._grad = self._scf.apply(grad.UHF)
         elif self._scf.istype('GKS'): self._grad = self._scf.apply(grad.GKS)
+        elif self._scf.istype('GHF'): self._grad = self._scf.apply(grad.GHF)
 
     # Additinal term arising from the moving nuclei in the classical path approximation to be added to the fock matrix
+    # Reminder to turn the complex conserving potential term Omega into one of the rtscf potential classes
     def get_omega(self):
         mol = self._scf.mol
         Rdot = self.nuc.vel
@@ -92,55 +85,28 @@ class RT_EHRENFEST(RT_SCF):
     def get_fock_orth(self, den_ao):
         #Omega = self.get_omega()
         self.fock = self._scf.get_fock(dm=den_ao).astype(np.complex128)
-        ### TEMPORARILY HARD CODING CAP FOR TESTING ###
-        #fock_orth = np.matmul(self.orth.T, np.matmul(self.fock, self.orth))
-        #expconst = 0.5
-        #emin = 0.0477
-        #prefac = 1.0
-        #maxval = 10.0
-
-        #maxe = np.log(maxval / prefac + 1) / expconst
-        #mo_energy, mo_orth = np.linalg.eigh(fock_orth)
-
-        #energy_corrected = mo_energy - emin
-        #energy_corrected = np.where(energy_corrected < maxe, energy_corrected, maxe * np.ones(energy_corrected.shape))
-
-        #damping_diagonal = np.where(energy_corrected > 0., prefac * (np.exp(expconst * energy_corrected) - 1), np.zeros(energy_corrected.shape))
-        #damping_diagonal = damping_diagonal.astype(np.complex128)
-
-        #if self.nmat == 1:
-        #    damping_matrix = np.diag(damping_diagonal)
-        #    damping_matrix = np.matmul(mo_orth, np.matmul(damping_matrix, np.conj(mo_orth.T)))
-        #else:
-        #    damping_matrix = np.stack((np.diag(damping_diagonal[0]), np.diag(damping_diagonal[1])))
-        #    damping_matrix[0] = np.matmul(mo_orth[0], np.matmul(damping_matrix[0], np.conj(mo_orth[0].T)))
-        #    damping_matrix[1] = np.matmul(mo_orth[1], np.matmul(damping_matrix[1], np.conj(mo_orth[1].T)))
-        #    #damping_matrix[0] = np.matmul(mo_orth[0], np.matmul(damping_matrix[0], mo_orth[0].T))
-        #    #damping_matrix[1] = np.matmul(mo_orth[1], np.matmul(damping_matrix[1], mo_orth[1].T))
-
         if self.potential: self.applypotential()
         ##return np.matmul(self.orth.T, np.matmul(self.fock - 1j * Omega, self.orth))
-        #return np.matmul(self.orth.T, np.matmul(self.fock, self.orth)) - 1j * damping_matrix
         return np.matmul(self.orth.T, np.matmul(self.fock, self.orth))
 
     def rotate_coeff_to_orth(self, coeff_ao):
         coeff_orth = np.matmul(inv(self.orth), coeff_ao)
-        #current_N = np.mod(int(self.current_time / self.timestep), self.Ne_step * self.N_step)
-        #current_Ne = np.mod(current_N, self.Ne_step)
-        #if current_N == 0: # k = 0, j = 0
-        #    self.nuc.get_vel(0.5 * self.N_step * self.Ne_step * self.timestep)
-        #    self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
-        #    self.update_mol()
-        #elif current_Ne == 0: # k = 0, j != 0
-        #    self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
-        #    self.update_mol()
-        #elif current_N == self.N_step * self.Ne_step - 1: # k = Ne_step-1, j = N_step-1
-        #    self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
-        #    self.update_mol()
-        #    self.nuc.get_vel(0.5 * self.N_step * self.Ne_step * self.timestep)
-        #elif current_Ne == self.Ne_step - 1: # k = Ne_step-1, j != N_step-1
-        #    self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
-        #    self.update_mol()
+        current_N = np.mod(int(self.current_time / self.timestep), self.Ne_step * self.N_step)
+        current_Ne = np.mod(current_N, self.Ne_step)
+        if current_N == 0: # k = 0, j = 0
+            self.nuc.get_vel(0.5 * self.N_step * self.Ne_step * self.timestep)
+            self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
+            self.update_mol()
+        elif current_Ne == 0: # k = 0, j != 0
+            self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
+            self.update_mol()
+        elif current_N == self.N_step * self.Ne_step - 1: # k = Ne_step-1, j = N_step-1
+            self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
+            self.update_mol()
+            self.nuc.get_vel(0.5 * self.N_step * self.Ne_step * self.timestep)
+        elif current_Ne == self.Ne_step - 1: # k = Ne_step-1, j != N_step-1
+            self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
+            self.update_mol()
         return coeff_orth
 
     def rotate_coeff_to_ao(self, coeff_orth):
@@ -173,20 +139,19 @@ class RT_EHRENFEST(RT_SCF):
         for i in range(0, self.N_step * self.Ne_step * self.total_steps):
             if np.mod(i, self.N_step * self.Ne_step * self.frequency) == 0:
                 self.temp_update_output_file()
-                #rt_utils.update_fragments(self) 
+                rt_utils.update_fragments(self) 
                 rt_observables.get_observables(self)
                 rt_utils.update_chkfile(self)
 
             integrate_function(self)
             self.current_time += self.timestep
-            #if np.mod(i, self.N_step * self.Ne_step) == 0: 
-            #    self.update_grad()
-            #    self.nuc.get_vel(-0.5 * self.N_step * self.Ne_step * self.timestep)
-            #    self.nuc.force = ehrenfest_force.get_force(self)
-            #    self.nuc.get_vel(0.5 * self.N_step * self.Ne_step * self.timestep)
+            if np.mod(i, self.N_step * self.Ne_step) == 0: 
+                self.nuc.get_vel(-0.5 * self.N_step * self.Ne_step * self.timestep)
+                self.nuc.force = ehrenfest_force.get_force(self)
+                self.nuc.get_vel(0.5 * self.N_step * self.Ne_step * self.timestep)
 
         self.temp_update_output_file()
-        #rt_utils.update_fragments(self) 
+        rt_utils.update_fragments(self) 
         rt_observables.get_observables(self)  # Collect observables at final time
         rt_utils.update_chkfile(self)
 

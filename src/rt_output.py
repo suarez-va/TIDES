@@ -43,10 +43,10 @@ def print_mag(rt_mf):
         for index, fragment in enumerate(mag[1:]):
             rt_mf.log.note(f"Fragment {index + 1} Magnetization [X, Y, Z] (AU): {' '.join(map(str,fragment))} \n")
 
-
-#def print_nuc(rt_mf):
-#    nuc = rt_mf.nuc
-#    rt_mf.log.note(f"Nuclear Coordinates: {nuc} \n")
-
-
+def print_nuclei(rt_mf):
+    nuclei = rt_mf.nuclei
+    rt_mf.log.note(f"Nuclear Coordinates (AU):")
+    for index, label in enumerate(nuclei[0][0]):
+        rt_mf.log.note(f" {label} {' '.join(map(lambda x: f'{x:.11f}' if x<0 else f' {x:.11f}', nuclei[1][index]))}")
+    rt_mf.log.note(" ")
 

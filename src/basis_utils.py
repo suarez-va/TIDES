@@ -122,18 +122,18 @@ def read_mol(mol):
     return basis, labels, pos
  
 def write_mol(basis, labels, pos):
-        atom_str = '\n '
-        for index, R in enumerate(pos):
-            atom_str += labels[index]
-            atom_str += '    '
-            atom_str += str(R[0])
-            atom_str += '    '
-            atom_str += str(R[1])
-            atom_str += '    '
-            atom_str += str(R[2])
-            atom_str += '\n '
-        mol = gto.Mole(atom = atom_str, unit = 'Bohr')
-        mol.basis = basis
-        mol.build()
-        return mol
+    atom_str = '\n '
+    for index, R in enumerate(pos):
+        atom_str += labels[index]
+        atom_str += '    '
+        atom_str += str(R[0])
+        atom_str += '    '
+        atom_str += str(R[1])
+        atom_str += '    '
+        atom_str += str(R[2])
+        atom_str += '\n '
+    mol = gto.Mole(atom = atom_str, unit = 'Bohr')
+    mol.basis = basis
+    mol.build()
+    return mol
 
