@@ -104,10 +104,10 @@ def reorder_noscf(noscf_orbitals, mf, *fragments):
         noscf_orbitals = noscf_orbitals[:,nind]
     return noscf_orbitals
 
-def occ_sort(oocc):
+def occ_sort(occ_list):
     nocc = []
     nvirt = []
-    for i, occ in enumerate(oocc):
+    for i, occ in enumerate(occ_list):
         if occ > 0:
             nocc.append(i)
         else:
@@ -124,14 +124,7 @@ def read_mol(mol):
 def write_mol(basis, labels, pos):
     atom_str = '\n '
     for index, R in enumerate(pos):
-        atom_str += labels[index]
-        atom_str += '    '
-        atom_str += str(R[0])
-        atom_str += '    '
-        atom_str += str(R[1])
-        atom_str += '    '
-        atom_str += str(R[2])
-        atom_str += '\n '
+        atom_str += '\t'.join([labels[index], str(R[0]), str(R[1]), str(R[2])]) + '\n '
     mol = gto.Mole(atom = atom_str, unit = 'Bohr')
     mol.basis = basis
     mol.build()

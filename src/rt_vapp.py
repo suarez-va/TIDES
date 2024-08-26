@@ -5,7 +5,7 @@ Real-time Time-Dependent Applied Potential (Sample Electric Field)
 '''
 
 class ElectricField:
-    def __init__(self, field_type=None, amplitude=[0,0,0], center=0,
+    def __init__(self, field_type, amplitude, center=0,
                 frequency=0, width=0, phase=0):
 
         # Some attributes are irrelevant depending on field type

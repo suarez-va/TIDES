@@ -20,7 +20,7 @@ mf.xc = 'PBE0'
 
 mf.kernel()
 
-rt_mf = RT_SCF(mf, 0.2, 1, 5000)
+rt_mf = RT_SCF(mf, 0.2, 1000)
 rt_mf.observables.update(energy=True, dipole=True)
 
 gaussian_field = ElectricField('gaussian', amplitude=[0.0, 0.0, 0.0001],

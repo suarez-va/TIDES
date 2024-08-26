@@ -43,7 +43,7 @@ water2.kernel()
 # Calculate noscf basis to print orbital occupations in
 noscf_orbitals = basis_utils.noscfbasis(dimer, water1, water2)
 
-rt_water = rt_scf.RT_SCF(dimer,1,1,1500)
+rt_water = rt_scf.RT_SCF(dimer,0.1, 1500)
 # Declare which observables to be calculated/printed
 rt_water.observables.update(energy=True, mo_occ=True, charge=True)
 

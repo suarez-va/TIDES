@@ -3,7 +3,7 @@ from basis_utils import match_fragment_atom, mask_fragment_basis, noscfbasis, re
 from pyscf import scf
 
 '''
-Real-time SCF Utilities
+Real-time Utilities
 '''
 
 def excite(rt_mf, excitation_alpha=None, excitation_beta=None):
@@ -46,6 +46,7 @@ def update_fragments(rt_mf):
         elif rt_mf._scf.istype('UHF'): frag_new = scf.UHF(frag_mol)
         elif rt_mf._scf.istype('GKS'): frag_new = scf.GKS(frag_mol); frag_new.xc = frag_old.xc
         elif rt_mf._scf.istype('GHF'): frag_new = scf.GHF(frag_mol)
+        print('a')
         frag_new.kernel() 
         fragments.append(frag_new)
     input_fragments(rt_mf, *fragments)
@@ -57,7 +58,7 @@ def update_fragments(rt_mf):
     elif rt_mf._scf.istype('UHF'): mf_new = scf.UHF(rt_mf._scf.mol)
     elif rt_mf._scf.istype('GKS'): mf_new = scf.GKS(rt_mf._scf.mol); mf_new.xc = rt_mf._scf.xc
     elif rt_mf._scf.istype('GHF'): mf_new = scf.GHF(rt_mf._scf.mol)
-    mf_new.kernel()
+    mf_new.kernel() 
     #rt_mf.mo_coeff_print = noscfbasis(mf_new, *fragments)
     rt_mf.mo_coeff_print = mf_new.mo_coeff
 

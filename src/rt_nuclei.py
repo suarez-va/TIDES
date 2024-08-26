@@ -3,7 +3,7 @@ from pyscf import gto, dft, scf
 from basis_utils import read_mol, write_mol
 
 '''
-Nuclear object for real-time SCF
+Nuclear Object for Real-Time Ehrenfest
 '''
 
 class NUC:
