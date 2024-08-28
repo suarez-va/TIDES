@@ -63,6 +63,7 @@ def update_fragments(rt_mf):
     rt_mf.mo_coeff_print = mf_new.mo_coeff
 
 def restart_from_chkfile(rt_mf):
+    rt_mf._log.note(f'Restarting from chkfile: {rt_mf.chkfile}.')
     with open(rt_mf.chkfile, 'r') as f:
         chk_lines = f.readlines()
         rt_mf.current_time = float(chk_lines[0].split()[3])

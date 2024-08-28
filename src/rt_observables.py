@@ -1,6 +1,7 @@
 import numpy as np
 import rt_output
 from basis_utils import read_mol
+from rt_utils import update_fragments
 
 '''
 Real-time Observable Functions
@@ -35,6 +36,8 @@ def _remove_suppressed_observables(rt_mf):
             del rt_mf._observables_functions[key]
 
 def get_observables(rt_mf):
+    if rt_mf.istype('RT_Ehrenfest'):
+        update_fragments(rt_mf)
     for key, function in rt_mf._observables_functions.items():
           function[0](rt_mf, rt_mf.den_ao)
 
@@ -64,6 +67,14 @@ def get_charge(rt_mf, den_ao):
     
     rt_mf._charge = charge
 
+def get_dipole(rt_mf, den_ao):
+    dipole = []
+    dipole.append(rt_mf._scf.dip_moment(rt_mf._scf.mol, rt_mf.den_ao,'A.U.', 1))
+    for frag, mask in rt_mf.fragments.items():
+        dipole.append(frag.dip_moment(frag.mol, den_ao[mask], 'A.U.', 1))
+    
+    rt_mf._dipole = dipole
+
 def get_mo_occ(rt_mf, den_ao):
     # P_mo = C+SP_aoSC
     SP_aoS = np.matmul(rt_mf.ovlp,np.matmul(den_ao,rt_mf.ovlp))
@@ -76,14 +87,6 @@ def get_mo_occ(rt_mf, den_ao):
         den_mo = np.real(den_mo)
 
     rt_mf._mo_occ = np.diagonal(den_mo)
-
-def get_dipole(rt_mf, den_ao):
-    dipole = []
-    dipole.append(rt_mf._scf.dip_moment(rt_mf._scf.mol, rt_mf.den_ao,'A.U.', 1))
-    for frag, mask in rt_mf.fragments.items():
-        dipole.append(frag.dip_moment(frag.mol, den_ao[mask], 'A.U.', 1))
-    
-    rt_mf._dipole = dipole
 
 def get_mag(rt_mf, den_ao):
     mag = [] 

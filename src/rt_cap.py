@@ -7,12 +7,11 @@ Molecular Orbital Complex Absorbing Potential (CAP)
 
 
 class MOCAP:
-    def __init__(self, expconst, emin, prefac=1, maxval=100, thr=1e-7):
+    def __init__(self, expconst, emin, prefac=1, maxval=100):
         self.expconst = expconst
         self.emin = emin
         self.prefac = prefac
         self.maxval = maxval
-        self.thr = thr
 
     def calculate_cap(self, rt_mf, fock):
         # Construct fock_orth without CAP

@@ -43,14 +43,13 @@ water2.kernel()
 # Calculate noscf basis to print orbital occupations in
 noscf_orbitals = basis_utils.noscfbasis(dimer, water1, water2)
 
-rt_water = rt_scf.RT_SCF(dimer,0.1, 1500)
+rt_water = rt_scf.RT_SCF(dimer,1, 1500)
 # Declare which observables to be calculated/printed
 rt_water.observables.update(energy=True, mo_occ=True, charge=True)
 
 # Create object for complex absorbing potential and add to rt object
-CAP = MOCAP(0.5, 0.0477, 1.0, 10.0, dimer.get_ovlp())
+CAP = MOCAP(0.5, 0.0477, 1.0, 10.0)
 rt_water.add_potential(CAP)
-
 # Remove electron from 4th molecular orbital (in SCF basis)
 # Input the two water fragments for their charge to be calculated
 rt_utils.excite(rt_water, 4)

@@ -50,7 +50,7 @@ water2.kernel()
 #noscf_orbitals = basis_utils.noscfbasis(dimer, water1, water2)
 #noscf_orbitals = dimer.mo_coeff
 
-rt_water = rt_ehrenfest.RT_Ehrenfest(dimer, 1, 1000, filename="H2O", prop="magnus_interpol", orth=None, frequency=1, chkfile=None, verbose=3, Ne_step=10, N_step=10)
+rt_water = rt_ehrenfest.RT_Ehrenfest(dimer, 1, 1000, filename='H2O', prop="magnus_interpol", orth=None, frequency=1, chkfile=None, verbose=3, Ne_step=10, N_step=10)
 # Declare which observables to be calculated/printed
 rt_water.observables.update(energy=True, mo_occ=True, charge=True)
 
