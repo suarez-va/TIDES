@@ -2,7 +2,7 @@ import numpy as np
 from scipy.linalg import inv
 from pyscf import gto, dft, scf
 from pyscf.lib import logger
-import rt_prop
+from rt_prop import propagate
 import rt_observables
 import rt_output
 from rt_utils import restart_from_chkfile
@@ -30,7 +30,6 @@ class RT_SCF:
         if prop is None: prop = "magnus_interpol"
         if orth is None: orth = scf.addons.canonical_orth_
         self.prop = prop
-        self.propagate = rt_prop.scf_propagate
         self._get_orth = orth
         
         self.orth = self._get_orth(self.ovlp)
@@ -64,6 +63,9 @@ class RT_SCF:
 
         return any(type_code == t.__name__ for t in self.__class__.__mro__)
 
+    def update_time(self):
+        self.current_time += self.timestep
+
     def get_fock_orth(self, den_ao):
         self.fock_ao = self._scf.get_fock(dm=den_ao).astype(np.complex128)
         if self._potential: self.applypotential()
@@ -86,7 +88,7 @@ class RT_SCF:
     def kernel(self, mo_coeff_print=None):
         try:
             self._log.note("Starting Propagation")
-            self.propagate(self, mo_coeff_print)
+            propagate(self, mo_coeff_print)
         except Exception:
             raise
         finally:

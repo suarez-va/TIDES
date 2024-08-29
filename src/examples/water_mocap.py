@@ -24,7 +24,7 @@ delta_field = ElectricField('delta', [0.0, 0.0, 0.0001])
 
 rt_mf.prop = 'magnus_interpol'
 
-CAP = MOCAP(1.0, 0.5, 1.0, 100.0, mf.get_ovlp())
+CAP = MOCAP(1.0, 0.5, 1.0, 100.0)
 rt_mf.add_potential(CAP, delta_field)
 
 

@@ -13,6 +13,9 @@ def magnus_step(rt_mf):
 
     fock_orth = rt_mf.get_fock_orth(rt_mf.den_ao)
 
+    # Update time, mol is updated here if rt_mf is Ehrenfest obj
+    rt_mf.update_time()
+
     u = expm(-1j*2*rt_mf.timestep*fock_orth)
 
     mo_coeff_orth_new = np.matmul(u, rt_mf.mo_coeff_orth_old)
@@ -34,6 +37,9 @@ def magnus_interpol(rt_mf):
 
     mo_coeff_orth = rt_mf.rotate_coeff_to_orth(rt_mf._scf.mo_coeff)
     fock_orth_p12dt = 2 * rt_mf._fock_orth - rt_mf._fock_orth_n12dt
+    
+    # Update time, mol is updated here if rt_mf is an Ehrenfest obj
+    rt_mf.update_time()
 
     for iteration in range(rt_mf.magnus_maxiter):
         u = expm(-1j*rt_mf.timestep*fock_orth_p12dt)
@@ -71,6 +77,10 @@ def rk4(rt_mf):
     '''
 
     fock_orth = rt_mf.get_fock_orth(rt_mf.den_ao)
+    
+    # Update time, mol is updated here if rt_mf is Ehrenfest obj
+    rt_mf.update_time()
+
     mo_coeff_orth = rt_mf.rotate_coeff_to_orth(rt_mf._scf.mo_coeff)
 
     # k1
@@ -89,7 +99,7 @@ def rk4(rt_mf):
     k4 = -1j * rt_mf.timestep * (np.matmul(fock_orth,mo_coeff_orth_3))
 
     mo_coeff_orth_new = mo_coeff_orth + (k1/6 + k2/3 + k3/3 + k4/6)
-    mo_coeff_ao_new = rt_mf.rotate_coeff(mo_coeff_orth_new, 'MO->AO')
+    mo_coeff_ao_new = rt_mf.rotate_coeff_to_ao(mo_coeff_orth_new)
 
     rt_mf._scf.mo_coeff = mo_coeff_ao_new
     rt_mf.den_ao = rt_mf._scf.make_rdm1(mo_occ=rt_mf.occ)
