@@ -36,6 +36,8 @@ def propagate(rt_mf, mo_coeff_print):
                 update_chkfile(rt_mf)
 
         rt_mf._integrate_function(rt_mf)
+        if rt_mf.istype('RT_Ehrenfest') and np.mod(int(rt_mf.current_time / rt_mf.timestep - 1), rt_mf.N_step * rt_mf.Ne_step) == rt_mf.N_step * rt_mf.Ne_step -1:
+            rt_mf.update_force()
 
     rt_observables.get_observables(rt_mf)  # Collect observables at final time
     if rt_mf.chkfile is not None:

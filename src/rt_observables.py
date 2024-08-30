@@ -69,9 +69,9 @@ def get_charge(rt_mf, den_ao):
 
 def get_dipole(rt_mf, den_ao):
     dipole = []
-    dipole.append(rt_mf._scf.dip_moment(rt_mf._scf.mol, rt_mf.den_ao,'A.U.', 1))
+    dipole.append(rt_mf._scf.dip_moment(mol=rt_mf._scf.mol, dm=rt_mf.den_ao,unit='A.U.', verbose=1))
     for frag, mask in rt_mf.fragments.items():
-        dipole.append(frag.dip_moment(frag.mol, den_ao[mask], 'A.U.', 1))
+        dipole.append(frag.dip_moment(mol=frag.mol, dm=den_ao[mask], unit='A.U.', verbose=1))
     
     rt_mf._dipole = dipole
 

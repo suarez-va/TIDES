@@ -45,12 +45,13 @@ class RT_Ehrenfest(RT_SCF):
         elif current_Ne == self.Ne_step - 1: # k = Ne_step-1, j != N_step-1
             self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
             self.update_mol()
-        if np.mod(int(self.current_time / self.timestep), self.N_step * self.Ne_step) == 0:
-            self.nuc.get_vel(-0.5 * self.N_step * self.Ne_step * self.timestep)
-            self.nuc.force = ehrenfest_force.get_force(self)
-            self.nuc.get_vel(-0.5 * self.N_step * self.Ne_step * self.timestep)
         
         self.current_time += self.timestep
+    
+    def update_force(self):
+        self.nuc.get_vel(-0.5 * self.N_step * self.Ne_step * self.timestep)
+        self.nuc.force = ehrenfest_force.get_force(self)
+        self.nuc.get_vel(0.5 * self.N_step * self.Ne_step * self.timestep)
 
     def update_mol(self):
         mo_coeff = self._scf.mo_coeff
