@@ -58,7 +58,7 @@ def update_fragments(rt_mf):
     elif rt_mf._scf.istype('GKS'): mf_new = scf.GKS(rt_mf._scf.mol); mf_new.xc = rt_mf._scf.xc
     elif rt_mf._scf.istype('GHF'): mf_new = scf.GHF(rt_mf._scf.mol)
     
-    ### ?
+    
     mf_new.kernel() 
     #rt_mf.mo_coeff_print = noscfbasis(mf_new, *fragments)
     rt_mf.mo_coeff_print = mf_new.mo_coeff

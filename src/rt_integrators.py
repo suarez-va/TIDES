@@ -70,6 +70,7 @@ def magnus_interpol(rt_mf):
     rt_mf._fock_orth = fock_orth_pdt
     rt_mf._fock_orth_n12dt = fock_orth_p12dt
 
+
 def rk4(rt_mf):
     '''
     C'(t + dt) = C'(t) + (k1/6 + k2/3 + k3/3 + k4/6)
