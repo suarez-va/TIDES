@@ -3,6 +3,7 @@ from pyscf import gto, dft, scf, grad
 import ehrenfest_force
 from rt_scf import RT_SCF
 from rt_nuclei import NUC
+from rt_utils import init_mf
 
 '''
 Real-time SCF + Ehrenfest
@@ -24,7 +25,9 @@ class RT_Ehrenfest(RT_SCF):
         self.nuc = NUC(self._scf.mol)
 
         self.current_time = 0
-
+        
+        self._mf_func = getattr(scf, type(self._scf).__name__)
+        self._grad_func = getattr(grad, type(self._scf).__name__)
         self.update_mol()
         # Reminder to check if forces should be updated again after excite()
         self.nuc.force = ehrenfest_force.get_force(self)
@@ -56,11 +59,7 @@ class RT_Ehrenfest(RT_SCF):
 
     def update_mol(self):
         mo_coeff = self._scf.mo_coeff
-        if hasattr(self._scf, 'xc'):
-            xc = self._scf.xc
-            self._scf.__init__(self.nuc.get_mol(), xc=xc)
-        else:
-            self._scf.__init__(self.nuc.get_mol())
+        self._scf = init_mf(self._scf, self.nuc.get_mol(), self._mf_func)
         self._scf.mo_coeff = mo_coeff
         self._scf.mo_occ = self.occ
         self.ovlp = self._scf.get_ovlp()
@@ -68,7 +67,7 @@ class RT_Ehrenfest(RT_SCF):
         self.orth = self._get_orth(self.ovlp)
 
     def update_grad(self):
-        self._grad = self._scf.apply(getattr(grad, type(self._scf).__name__))
+        self._grad = self._scf.apply(self._grad_func)
 
     # Additinal term arising from the moving nuclei in the classical path approximation to be added to the fock matrix
     # Reminder to turn the complex conserving potential term Omega into one of the rtscf potential classes

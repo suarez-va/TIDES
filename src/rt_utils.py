@@ -31,46 +31,38 @@ def input_fragments(rt_mf, *fragments):
         frag.match_indices = match_indices
         rt_mf.fragments[frag] = mask_basis
 
-def update_fragments(rt_mf):
+def init_mf(mf, mol, mf_func):
+    # Currently will not reapply x2c() or .nlc. 
+    if hasattr(mf, 'xc'):
+        xc = mf.xc
+        mf_new = mf_func(mol); mf_new.xc = xc
+    else:
+        mf_new = mf_func(mol)
+    return mf_new
+
+def update_fragments(rt_ehrenfest):
     # Update fragments to new geometry, solve scf problem
     fragments = []
-    basis, labels, pos = read_mol(rt_mf._scf.mol)
-    for frag, mask in rt_mf.fragments.items():
+    basis, labels, pos = read_mol(rt_ehrenfest._scf.mol)
+    for frag, mask in rt_ehrenfest.fragments.items():
         frag_indices = frag.match_indices
         delattr(frag, 'match_indices')
         frag_labels = [labels[i] for i in frag_indices]
         frag_pos = [pos[i] for i in frag_indices]
         frag_mol = write_mol(basis, frag_labels, frag_pos)
         frag_mol.verbose = 0
-        if hasattr(frag, 'xc'):
-            xc = frag.xc
-            frag.__init__(frag_mol, xc=xc)
-        else:
-            frag.__init__(frag_mol)
+        frag = init_mf(frag, frag_mol, rt_ehrenfest._mf_func)
         frag.kernel() 
         frag.match_indices = frag_indices
         fragments.append(frag)
-    rt_mf.fragments = {}
-    input_fragments(rt_mf, *fragments)
+    rt_ehrenfest.fragments = {}
+    input_fragments(rt_ehrenfest, *fragments)
 
     # Update mo_coeff_print from new fragmens:
-    mf_type = getattr(scf, type(rt_mf._scf).__name__)
-    if hasattr(rt_mf._scf, 'xc'):
-        xc = rt_mf._scf.xc
-        mf_new = mf_type(rt_mf._scf.mol, xc=xc)
-    else:
-        mf_new = mf_type(rt_mf._scf.mol)
-    '''
-    if rt_mf._scf.istype('RKS'): mf_new = scf.RKS(rt_mf._scf.mol); mf_new.xc = rt_mf._scf.xc
-    elif rt_mf._scf.istype('RHF'): mf_new = scf.RHF(rt_mf._scf.mol)
-    elif rt_mf._scf.istype('UKS'): mf_new = scf.UKS(rt_mf._scf.mol); mf_new.xc = rt_mf._scf.xc
-    elif rt_mf._scf.istype('UHF'): mf_new = scf.UHF(rt_mf._scf.mol)
-    elif rt_mf._scf.istype('GKS'): mf_new = scf.GKS(rt_mf._scf.mol); mf_new.xc = rt_mf._scf.xc
-    elif rt_mf._scf.istype('GHF'): mf_new = scf.GHF(rt_mf._scf.mol)
-    '''
+    mf_new = init_mf(rt_ehrenfest._scf, rt_ehrenfest._scf.mol, rt_ehrenfest._mf_func)
     mf_new.kernel()
     #rt_mf.mo_coeff_print = noscfbasis(mf_new, *fragments)
-    rt_mf.mo_coeff_print = mf_new.mo_coeff
+    rt_ehrenfest.mo_coeff_print = mf_new.mo_coeff
 
 def restart_from_chkfile(rt_mf):
     rt_mf._log.note(f'Restarting from chkfile: {rt_mf.chkfile}.')
@@ -101,15 +93,19 @@ def update_chkfile(rt_mf):
             np.savetxt(f, rt_mf._scf.mo_coeff[1])
 
 def print_info(rt_mf, mo_coeff_print):
+    mf_type = type(rt_mf._scf).__name__
+    if hasattr(rt_mf._scf, 'xc'):
+        xc = rt_mf._scf.xc
+
     rt_mf._log.note('PUT CALC INFO HERE')
 
     if rt_mf.observables['mo_occ']:
         if mo_coeff_print is None:
             if hasattr(rt_mf, 'mo_coeff_print'):
-                pass
+                print(rt_mf.mo_coeff_print)
             else:
                 rt_mf._log.info('mo_coeff_print unspecified. Molecular orbital occupations will be printed in the basis of initial mo_coeff.')
 
                 rt_mf.mo_coeff_print = rt_mf._scf.mo_coeff
-    else:
-        rt_mf.mo_coeff_print = mo_coeff_print
+        else:
+            rt_mf.mo_coeff_print = mo_coeff_print
