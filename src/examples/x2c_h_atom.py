@@ -4,6 +4,12 @@ import rt_scf
 import rt_vapp
 from rt_vapp import ElectricField
 
+############################
+# CURRENTLY DOESNT WORK    #
+# PYSCF HAS BUG WITH       #
+# dip_moment() for GHF+X2C #
+############################
+
 mag_z = 0.000085 # in au
 
 mol = gto.M(

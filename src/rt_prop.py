@@ -2,21 +2,14 @@ import numpy as np
 import rt_integrators
 import rt_observables
 import rt_output
-from rt_utils import update_chkfile
+from rt_utils import update_chkfile, print_info
 
 '''
 Real-time Propagation
 '''
 
 def propagate(rt_mf, mo_coeff_print):
-    if mo_coeff_print is None:
-            if hasattr(rt_mf, 'mo_coeff_print'):
-                pass
-            else:
-                rt_mf.mo_coeff_print = rt_mf._scf.mo_coeff
-    else:
-        rt_mf.mo_coeff_print = mo_coeff_print
-
+    print_info(rt_mf, mo_coeff_print)
     rt_observables._remove_suppressed_observables(rt_mf)
 
     rt_mf._integrate_function = rt_integrators.get_integrator(rt_mf)
