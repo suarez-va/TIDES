@@ -28,11 +28,10 @@ class RT_SCF:
         self.fragments = {}
 
         if prop is None: prop = "magnus_interpol"
-        if orth is None: orth = scf.addons.canonical_orth_
+        if orth is None: orth = scf.addons.canonical_orth_(self.ovlp)
         self.prop = prop
-        self._get_orth = orth
         
-        self.orth = self._get_orth(self.ovlp)
+        self.orth = orth
 
         if len(np.shape(self._scf.mo_coeff)) == 3:
             self.nmat = 2
@@ -87,7 +86,6 @@ class RT_SCF:
 
     def kernel(self, mo_coeff_print=None):
         try:
-            self._log.note("Starting Propagation")
             propagate(self, mo_coeff_print)
         except Exception:
             raise

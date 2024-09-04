@@ -4,6 +4,7 @@ import rt_utils
 import basis_utils
 import rt_ehrenfest
 from rt_cap import MOCAP
+from rt_utils import get_noscf_orbitals
 
 dimer = gto.Mole()#basis = 'augccpvdz')
 water1 = gto.Mole()#basis = 'augccpvdz')
@@ -32,9 +33,9 @@ dimer.build()
 water1.build()
 water2.build()
 
-dimer = scf.UHF(dimer)
-water1 = scf.UHF(water1)
-water2 = scf.UHF(water2)
+dimer = scf.UHF(dimer).x2c()
+water1 = scf.UHF(water1).x2c()
+water2 = scf.UHF(water2).x2c()
 #dimer = scf.UKS(dimer); dimer.xc = 'PBE0'
 #water1 = scf.UKS(water1); water1.xc = 'PBE0'
 #water2 = scf.UKS(water2); water2.xc = 'PBE0'
@@ -50,9 +51,9 @@ water2.kernel()
 #noscf_orbitals = basis_utils.noscfbasis(dimer, water1, water2)
 #noscf_orbitals = dimer.mo_coeff
 
-rt_water = rt_ehrenfest.RT_Ehrenfest(dimer, 1, 1000, filename='H2O', prop="magnus_interpol", frequency=1, chkfile=None, verbose=3, Ne_step=10, N_step=10)
+rt_water = rt_ehrenfest.RT_Ehrenfest(dimer, 1, 1000, filename='H2O', prop="magnus_interpol", frequency=1, chkfile=None, verbose=3, Ne_step=10, N_step=10, get_mo_coeff_print=get_noscf_orbitals)
 # Declare which observables to be calculated/printed
-rt_water.observables.update(energy=True, mo_occ=True, charge=True)
+rt_water.observables.update(energy=True, mo_occ=True, charge=True, nuclei=True)
 
 # Create object for complex absorbing potential and add to rt object
 CAP = MOCAP(0.5, 0.0477, 1.0, 10.0)#, dimer.get_ovlp())

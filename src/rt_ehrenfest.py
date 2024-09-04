@@ -3,21 +3,22 @@ from pyscf import gto, dft, scf, grad
 import ehrenfest_force
 from rt_scf import RT_SCF
 from rt_nuclei import NUC
-from rt_utils import init_mf
+from rt_utils import _sym_orth, get_scf_orbitals
 
 '''
 Real-time SCF + Ehrenfest
 '''
 
 class RT_Ehrenfest(RT_SCF):
-    def __init__(self, mf, timestep, max_time, filename=None, prop=None, frequency=1, orth=None, chkfile=None, verbose=3, Ne_step=10, N_step=10):
+    def __init__(self, mf, timestep, max_time, filename=None, prop=None, frequency=1, chkfile=None, verbose=3, Ne_step=10, N_step=10, get_mo_coeff_print=None):
 
-        super().__init__(mf, timestep, max_time, filename, prop, frequency, orth, chkfile, verbose)
+        super().__init__(mf, timestep, max_time, filename, prop, frequency, None, chkfile, verbose)
 
         self.Ne_step = Ne_step
         self.N_step = N_step
-        self.filename = filename
 
+        # Ehrenfest currently only support symmetrical orthogonalization
+        self.orth = _sym_orth(self)
         self.den_ao = self._scf.make_rdm1(mo_coeff = self._scf.mo_coeff)
         if self.den_ao.dtype != np.complex128:
             self.den_ao = self.den_ao.astype(np.complex128)
@@ -26,11 +27,21 @@ class RT_Ehrenfest(RT_SCF):
 
         self.current_time = 0
         
-        self._mf_func = getattr(scf, type(self._scf).__name__)
-        self._grad_func = getattr(grad, type(self._scf).__name__)
+        if self._scf.istype('RKS'): self._grad_func = grad.RKS
+        elif self._scf.istype('RHF'): self._grad_func = grad.RHF
+        elif self._scf.istype('UKS'): self._grad_func = grad.UKS
+        elif self._scf.istype('UHF'): self._grad_func = grad.UHF
+        elif self._scf.istype('GKS'): self._grad_func = grad.GKS
+        elif self._scf.istype('GHF'): self._grad_func = grad.GHF
+        
         self.update_mol()
         # Reminder to check if forces should be updated again after excite()
         self.nuc.force = ehrenfest_force.get_force(self)
+
+        if get_mo_coeff_print is None:
+            self.get_mo_coeff_print = get_scf_orbitals
+        else:
+            self.get_mo_coeff_print = get_mo_coeff_print
 
     def update_time(self):
         current_N = np.mod(int(self.current_time / self.timestep), self.Ne_step * self.N_step)
@@ -58,13 +69,11 @@ class RT_Ehrenfest(RT_SCF):
         self.nuc.get_vel(0.5 * self.N_step * self.Ne_step * self.timestep)
 
     def update_mol(self):
-        mo_coeff = self._scf.mo_coeff
-        self._scf = init_mf(self._scf, self.nuc.get_mol(), self._mf_func)
-        self._scf.mo_coeff = mo_coeff
-        self._scf.mo_occ = self.occ
+        self._scf.reset(self.nuc.get_mol())
+        self._scf.verbose = 0
         self.ovlp = self._scf.get_ovlp()
         self.evals, self.evecs = np.linalg.eigh(self.ovlp)
-        self.orth = self._get_orth(self.ovlp)
+        self.orth = _sym_orth(self)
 
     def update_grad(self):
         self._grad = self._scf.apply(self._grad_func)

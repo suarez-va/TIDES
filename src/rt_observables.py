@@ -1,7 +1,7 @@
 import numpy as np
 import rt_output
 from basis_utils import read_mol
-from rt_utils import update_fragments
+from rt_utils import update_mo_coeff_print
 
 '''
 Real-time Observable Functions
@@ -36,8 +36,8 @@ def _remove_suppressed_observables(rt_mf):
             del rt_mf._observables_functions[key]
 
 def get_observables(rt_mf):
-    if rt_mf.istype('RT_Ehrenfest'):
-        update_fragments(rt_mf)
+    if rt_mf.istype('RT_Ehrenfest') and 'mo_occ' in rt_mf.observables:
+        update_mo_coeff_print(rt_mf)
     for key, function in rt_mf._observables_functions.items():
           function[0](rt_mf, rt_mf.den_ao)
 

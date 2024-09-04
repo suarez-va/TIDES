@@ -31,38 +31,31 @@ def input_fragments(rt_mf, *fragments):
         frag.match_indices = match_indices
         rt_mf.fragments[frag] = mask_basis
 
-def init_mf(mf, mol, mf_func):
-    # Currently will not reapply x2c() or .nlc. 
-    if hasattr(mf, 'xc'):
-        xc = mf.xc
-        mf_new = mf_func(mol); mf_new.xc = xc
-    else:
-        mf_new = mf_func(mol)
-    return mf_new
+def update_mo_coeff_print(rt_ehrenfest):
+    rt_ehrenfest.get_mo_coeff_print(rt_ehrenfest)
 
-def update_fragments(rt_ehrenfest):
+def get_scf_orbitals(rt_ehrenfest):
+    mo_coeff = np.copy(rt_ehrenfest._scf.mo_coeff)
+    rt_ehrenfest._scf.kernel()
+    rt_ehrenfest.mo_coeff_print = rt_ehrenfest._scf.mo_coeff
+    rt_ehrenfest._scf.mo_coeff = mo_coeff
+
+def get_noscf_orbitals(rt_ehrenfest):
     # Update fragments to new geometry, solve scf problem
     fragments = []
     basis, labels, pos = read_mol(rt_ehrenfest._scf.mol)
     for frag, mask in rt_ehrenfest.fragments.items():
         frag_indices = frag.match_indices
-        delattr(frag, 'match_indices')
         frag_labels = [labels[i] for i in frag_indices]
         frag_pos = [pos[i] for i in frag_indices]
         frag_mol = write_mol(basis, frag_labels, frag_pos)
-        frag_mol.verbose = 0
-        frag = init_mf(frag, frag_mol, rt_ehrenfest._mf_func)
-        frag.kernel() 
+        frag.reset(frag_mol)
+        frag.verbose = 0
+        frag.kernel()
         frag.match_indices = frag_indices
         fragments.append(frag)
-    rt_ehrenfest.fragments = {}
-    input_fragments(rt_ehrenfest, *fragments)
 
-    # Update mo_coeff_print from new fragmens:
-    mf_new = init_mf(rt_ehrenfest._scf, rt_ehrenfest._scf.mol, rt_ehrenfest._mf_func)
-    mf_new.kernel()
-    #rt_mf.mo_coeff_print = noscfbasis(mf_new, *fragments)
-    rt_ehrenfest.mo_coeff_print = mf_new.mo_coeff
+    rt_ehrenfest.mo_coeff_print = noscfbasis(rt_ehrenfest._scf, *fragments)
 
 def restart_from_chkfile(rt_mf):
     rt_mf._log.note(f'Restarting from chkfile: {rt_mf.chkfile}.')
@@ -93,13 +86,32 @@ def update_chkfile(rt_mf):
             np.savetxt(f, rt_mf._scf.mo_coeff[1])
 
 def print_info(rt_mf, mo_coeff_print):
+    rt_mf._log.note(f"{'=' * 25} \nBeginning Propagation For: \n")
     mf_type = type(rt_mf._scf).__name__
+    rt_mf._log.note(f'\t Object Type: {mf_type}')
+    rt_mf._log.note(f'\t Basis Set: {rt_mf._scf.mol.basis}\n')
     if hasattr(rt_mf._scf, 'xc'):
         xc = rt_mf._scf.xc
+        rt_mf._log.note(f'\t Exchange-Correlation Functional: {xc}')
+    if hasattr(rt_mf._scf, 'nlc'):
+        nlc = rt_mf._scf.nlc
+        rt_mf._log.note(f'\t Non-local Dispersion Correction: {nlc}')
 
-    rt_mf._log.note('PUT CALC INFO HERE')
+    rt_mf._log.note('Propagation Settings: \n')
+    rt_mf._log.note(f'\t Integrator: {rt_mf.prop}')
+    rt_mf._log.note(f'\t Max time (AU): {rt_mf.max_time}')
+    rt_mf._log.note(f'\t Time step (AU): {rt_mf.timestep}')
+    rt_mf._log.note(f'\t Observables: \n')
+    for obs in rt_mf.observables.keys():
+        rt_mf._log.note(f' \t \t {obs}')
+    if rt_mf._potential:
+        rt_mf._log.note('\nApplied Potentials: \n')
+        for vapp in rt_mf._potential:
+            rt_mf._log.note(f'\t \t {type(vapp).__name__}')
 
-    if rt_mf.observables['mo_occ']:
+    rt_mf._log.note(f"\n{'=' * 25}")
+
+    if 'mo_occ' in rt_mf.observables.keys():
         if mo_coeff_print is None:
             if hasattr(rt_mf, 'mo_coeff_print'):
                 print(rt_mf.mo_coeff_print)
@@ -109,3 +121,9 @@ def print_info(rt_mf, mo_coeff_print):
                 rt_mf.mo_coeff_print = rt_mf._scf.mo_coeff
         else:
             rt_mf.mo_coeff_print = mo_coeff_print
+
+
+def _sym_orth(rt_ehrenfest):
+    # Symmetrical orthogonalization is used for Ehrenfest dynamics
+    rt_ehrenfest.evals, rt_ehrenfest.evecs = np.linalg.eigh(rt_ehrenfest.ovlp)
+    return np.linalg.multi_dot([rt_ehrenfest.evecs, np.diag(np.power(rt_ehrenfest.evals, -0.5)), rt_ehrenfest.evecs.T])
