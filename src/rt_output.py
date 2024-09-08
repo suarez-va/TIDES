@@ -5,6 +5,7 @@ Real-time Output Functions
 '''
 
 def update_output(rt_mf):
+    rt_mf._log.note(f"{'=' * 25} \n")
     rt_mf._log.note(f"Current Time (AU): {rt_mf.current_time:.8f} \n")
     for key, function in rt_mf._observables_functions.items():
         function[1](rt_mf)
@@ -17,6 +18,11 @@ def _print_energy(rt_mf):
     if len(energy) > 1:
         for index, fragment in enumerate(energy[1:]):
             rt_mf._log.note(f"Fragment {index + 1} Energy (AU): {fragment} \n")
+    if rt_mf.istype('RT_Ehrenfest'):
+        kinetic_energy = rt_mf._kinetic_energy
+        rt_mf._log.note(f"Kinetic Energy (AU): {kinetic_energy[0]} \n")
+        for index, fragment in enumerate(kinetic_energy[1:]):
+            rt_mf._log.note(f"Fragment {index + 1} Kinetic Energy (AU): {fragment} \n")
 
 def _print_mo_occ(rt_mf):
     mo_occ = rt_mf._mo_occ

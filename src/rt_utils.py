@@ -1,6 +1,8 @@
 import numpy as np
 from basis_utils import match_fragment_atom, mask_fragment_basis, noscfbasis, read_mol, write_mol
+import ehrenfest_force
 from pyscf import scf
+from rt_nuclei import NUC
 
 '''
 Real-time Utilities
@@ -29,7 +31,8 @@ def input_fragments(rt_mf, *fragments):
         match_indices = match_fragment_atom(rt_mf._scf, frag)
         mask_basis = mask_fragment_basis(rt_mf._scf, match_indices)
         frag.match_indices = match_indices
-        rt_mf.fragments[frag] = mask_basis
+        frag.mask = mask_basis
+        rt_mf.fragments.append(frag)
 
 def update_mo_coeff_print(rt_ehrenfest):
     rt_ehrenfest.get_mo_coeff_print(rt_ehrenfest)
@@ -42,23 +45,19 @@ def get_scf_orbitals(rt_ehrenfest):
 
 def get_noscf_orbitals(rt_ehrenfest):
     # Update fragments to new geometry, solve scf problem
-    fragments = []
     basis, labels, pos = read_mol(rt_ehrenfest._scf.mol)
-    for frag, mask in rt_ehrenfest.fragments.items():
+    for frag in rt_ehrenfest.fragments:
         frag_indices = frag.match_indices
         frag_labels = [labels[i] for i in frag_indices]
         frag_pos = [pos[i] for i in frag_indices]
-        frag_mol = write_mol(basis, frag_labels, frag_pos)
-        frag.reset(frag_mol)
+        frag.reset(write_mol(basis, frag_labels, frag_pos))
         frag.verbose = 0
         frag.kernel()
         frag.match_indices = frag_indices
-        fragments.append(frag)
-
-    rt_ehrenfest.mo_coeff_print = noscfbasis(rt_ehrenfest._scf, *fragments)
+    rt_ehrenfest.mo_coeff_print = noscfbasis(rt_ehrenfest._scf, *rt_ehrenfest.fragments)
 
 def restart_from_chkfile(rt_mf):
-    rt_mf._log.note(f'Restarting from chkfile: {rt_mf.chkfile}.')
+    rt_mf._log.note(f'### Restarting from chkfile: {rt_mf.chkfile} ###\n')
     with open(rt_mf.chkfile, 'r') as f:
         chk_lines = f.readlines()
         rt_mf.current_time = float(chk_lines[0].split()[3])
@@ -93,35 +92,41 @@ def print_info(rt_mf, mo_coeff_print):
     if hasattr(rt_mf._scf, 'xc'):
         xc = rt_mf._scf.xc
         rt_mf._log.note(f'\t Exchange-Correlation Functional: {xc}')
-    if hasattr(rt_mf._scf, 'nlc'):
+    if hasattr(rt_mf._scf, 'nlc') and rt_mf._scf is not None:
         nlc = rt_mf._scf.nlc
         rt_mf._log.note(f'\t Non-local Dispersion Correction: {nlc}')
 
     rt_mf._log.note('Propagation Settings: \n')
+    if rt_mf.istype('RT_Ehrenfest'):
+        rt_mf._log.note(f'\t Real-Time SCF w/ Ehrenfest Dynamics')
+    else:
+        rt_mf._log.note(f'\t Real-Time SCF')
     rt_mf._log.note(f'\t Integrator: {rt_mf.prop}')
     rt_mf._log.note(f'\t Max time (AU): {rt_mf.max_time}')
     rt_mf._log.note(f'\t Time step (AU): {rt_mf.timestep}')
+    if rt_mf.istype('RT_Ehrenfest'):
+        rt_mf._log.note(f'\t Nuclear Position Update Frequency: {rt_mf.Ne_step}')
+        rt_mf._log.note(f'\t Nuclear Force Update Frequency: {rt_mf.N_step}')
     rt_mf._log.note(f'\t Observables: \n')
     for obs in rt_mf.observables.keys():
         rt_mf._log.note(f' \t \t {obs}')
-    if rt_mf._potential:
-        rt_mf._log.note('\nApplied Potentials: \n')
-        for vapp in rt_mf._potential:
-            rt_mf._log.note(f'\t \t {type(vapp).__name__}')
-
-    rt_mf._log.note(f"\n{'=' * 25}")
-
+    
     if 'mo_occ' in rt_mf.observables.keys():
         if mo_coeff_print is None:
             if hasattr(rt_mf, 'mo_coeff_print'):
                 print(rt_mf.mo_coeff_print)
             else:
-                rt_mf._log.info('mo_coeff_print unspecified. Molecular orbital occupations will be printed in the basis of initial mo_coeff.')
+                rt_mf._log.note('\n*** mo_coeff_print unspecified. Molecular orbital occupations will be printed in the basis of initial mo_coeff. ***\n')
 
                 rt_mf.mo_coeff_print = rt_mf._scf.mo_coeff
         else:
             rt_mf.mo_coeff_print = mo_coeff_print
 
+    if rt_mf._potential:
+        rt_mf._log.note('\nApplied Potentials: \n')
+        for vapp in rt_mf._potential:
+            rt_mf._log.note(f'\t \t {type(vapp).__name__}')
+    rt_mf._log.note('\n')
 
 def _sym_orth(rt_ehrenfest):
     # Symmetrical orthogonalization is used for Ehrenfest dynamics

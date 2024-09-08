@@ -21,7 +21,7 @@ class NUC:
         return write_mol(self.basis, self.labels, self.pos)
 
     def get_ke(self):
-        return np.sum(0.5 * self.mass * self.vel**2)
+        return 0.5 * self.mass * self.vel**2
 
     def sample_vel(self, beta):
         #np.random.seed(47)

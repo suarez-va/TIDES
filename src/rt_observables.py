@@ -44,36 +44,40 @@ def get_observables(rt_mf):
     rt_output.update_output(rt_mf)
 
 def get_energy(rt_mf, den_ao):
-    energy = []
-    energy.append(rt_mf._scf.energy_tot(dm=den_ao))
-    if rt_mf.istype('RT_EHRENFEST'):
-        energy[0] += rt_mf.nuc.get_ke()
-    for frag, mask in rt_mf.fragments.items():
-        energy.append(frag.energy_tot(dm=den_ao[mask]))
-
-    rt_mf._energy = energy
+    rt_mf._energy = []
+    rt_mf._energy.append(rt_mf._scf.energy_tot(dm=den_ao))
+    if rt_mf.istype('RT_Ehrenfest'):
+        ke = np.sum(rt_mf.nuc.get_ke())
+        rt_mf._energy[0] += ke
+        rt_mf._kinetic_energy = []
+        rt_mf._kinetic_energy.append(ke)
+    for frag in rt_mf.fragments:
+        rt_mf._energy.append(frag.energy_tot(dm=den_ao[frag.mask]))
+        if rt_mf.istype('RT_Ehrenfest'):
+            ke = np.sum(rt_mf.nuc.get_ke()[frag.match_indices])
+            rt_mf._energy[-1] += ke
+            rt_mf._kinetic_energy.append(ke)
+            
 
 def get_charge(rt_mf, den_ao):
     # charge = tr(PaoS)
-    charge = []
+    rt_mf._charge = []
     if rt_mf.nmat == 2:
-        charge.append(np.trace(np.sum(np.matmul(den_ao,rt_mf.ovlp), axis=0)))
-        for frag, mask in rt_mf.fragments.items():
-            charge.append(np.trace(np.sum(np.matmul(den_ao,rt_mf.ovlp)[mask], axis=0)))
+        rt_mf._charge.append(np.trace(np.sum(np.matmul(den_ao,rt_mf.ovlp), axis=0)))
+        for frag in rt_mf.fragments:
+            rt_mf._charge.append(np.trace(np.sum(np.matmul(den_ao,rt_mf.ovlp)[frag.mask], axis=0)))
     else:
-        charge.append(np.trace(np.matmul(den_ao,rt_mf.ovlp)))
-        for frag, mask in rt_mf.fragments.items():
-            charge.append(np.trace(np.matmul(den_ao,rt_mf.ovlp)[mask]))
+        rt_mf._charge.append(np.trace(np.matmul(den_ao,rt_mf.ovlp)))
+        for frag in rt_mf.fragments:
+            rt_mf._charge.append(np.trace(np.matmul(den_ao,rt_mf.ovlp)[frag.mask]))
     
-    rt_mf._charge = charge
 
 def get_dipole(rt_mf, den_ao):
-    dipole = []
-    dipole.append(rt_mf._scf.dip_moment(mol=rt_mf._scf.mol, dm=rt_mf.den_ao,unit='A.U.', verbose=1))
-    for frag, mask in rt_mf.fragments.items():
-        dipole.append(frag.dip_moment(mol=frag.mol, dm=den_ao[mask], unit='A.U.', verbose=1))
+    rt_mf._dipole = []
+    rt_mf._dipole.append(rt_mf._scf.dip_moment(mol=rt_mf._scf.mol, dm=rt_mf.den_ao,unit='A.U.', verbose=1))
+    for frag in rt_mf.fragments:
+        rt_mf._dipole.append(frag.dip_moment(mol=frag.mol, dm=den_ao[frag.mask], unit='A.U.', verbose=1))
     
-    rt_mf._dipole = dipole
 
 def get_mo_occ(rt_mf, den_ao):
     # P_mo = C+SP_aoSC
@@ -89,30 +93,28 @@ def get_mo_occ(rt_mf, den_ao):
     rt_mf._mo_occ = np.diagonal(den_mo)
 
 def get_mag(rt_mf, den_ao):
-    mag = [] 
+    rt_mf._mag = [] 
     Nsp = int(np.shape(rt_mf.ovlp)[0] / 2)
     
     magx = np.sum((den_ao[:Nsp, Nsp:] + den_ao[Nsp:, :Nsp]) * rt_mf.ovlp[:Nsp,:Nsp]) 
     magy = 1j * np.sum((den_ao[:Nsp, Nsp:] - den_ao[Nsp:, :Nsp]) * rt_mf.ovlp[:Nsp,:Nsp])
     magz = np.sum((den_ao[:Nsp, :Nsp] - den_ao[Nsp:, Nsp:]) * rt_mf.ovlp[:Nsp,:Nsp])
-    mag.append([magx, magy, magz])
+    rt_mf._mag.append([magx, magy, magz])
 
-    for frag, mask in rt_mf.fragments.items():
-        frag_ovlp = rt_mf.ovlp[mask]
-        frag_den_ao = den_ao[mask]
+    for frag in rt_mf.fragments:
+        frag_ovlp = rt_mf.ovlp[frag.mask]
+        frag_den_ao = den_ao[frag.mask]
         Nsp = int(np.shape(frag_ovlp)[0] / 2)
     
         magx = np.sum((frag_den_ao[:Nsp, Nsp:] + frag_den_ao[Nsp:, :Nsp]) * frag_ovlp[:Nsp,:Nsp])
         magy = 1j * np.sum((frag_den_ao[:Nsp, Nsp:] - frag_den_ao[Nsp:, :Nsp]) * frag_ovlp[:Nsp,:Nsp])
         magz = np.sum((frag_den_ao[:Nsp, :Nsp] - frag_den_ao[Nsp:, Nsp:]) * frag_ovlp[:Nsp,:Nsp])
-        mag.append([magx, magy, magz])
+        rt_mf._mag.append([magx, magy, magz])
     
-    rt_mf._mag = mag
 
 def get_nuclei(rt_mf, den_ao):
     # So I'm thinking max verbosity: nuclei[0] = labels, nuclei[1]=pos, nuclei[2]=vel, nuclei[3]=force, match atom label to fragments H1 O2 ect.
-    nuclei = []
+    rt_mf._nuclei = []
     basis, labels, pos = read_mol(rt_mf._scf.mol)
-    nuclei.append([labels])
-    nuclei.append(pos)
-    rt_mf._nuclei = nuclei
+    rt_mf._nuclei.append([labels])
+    rt_mf._nuclei.append(pos)

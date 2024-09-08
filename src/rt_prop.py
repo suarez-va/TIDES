@@ -28,6 +28,10 @@ def propagate(rt_mf, mo_coeff_print):
             if rt_mf.chkfile is not None:
                 update_chkfile(rt_mf)
 
+            rt_mf._log.debug(f"\n{'*'*25} Molecular Orbital Coefficients (AO Basis): {'*'*25}\n {rt_mf._scf.mo_coeff} \n{'*'*50}\n")
+            rt_mf._log.debug1(f"\n{'@'*25} Density Matrix (AO Basis): {'@'*25}\n {rt_mf.den_ao} \n{'@'*50}\n")
+            rt_mf._log.debug2(f"\n{'+'*25} Fock Matrix (AO Basis): {'+'*25}\n {rt_mf.fock_ao} \n{'+'*50}\n")
+        
         rt_mf._integrate_function(rt_mf)
         if rt_mf.istype('RT_Ehrenfest') and np.mod(int(rt_mf.current_time / rt_mf.timestep - 1), rt_mf.N_step * rt_mf.Ne_step) == rt_mf.N_step * rt_mf.Ne_step -1:
             rt_mf.update_force()
