@@ -1,6 +1,8 @@
 import numpy as np
 from basis_utils import match_fragment_atom, mask_fragment_basis, noscfbasis, read_mol, write_mol
+import ehrenfest_force
 from pyscf import scf
+from rt_nuclei import NUC
 
 '''
 Real-time Utilities
@@ -29,42 +31,33 @@ def input_fragments(rt_mf, *fragments):
         match_indices = match_fragment_atom(rt_mf._scf, frag)
         mask_basis = mask_fragment_basis(rt_mf._scf, match_indices)
         frag.match_indices = match_indices
-        rt_mf.fragments[frag] = mask_basis
+        frag.mask = mask_basis
+        rt_mf.fragments.append(frag)
 
-def update_fragments(rt_mf):
+def update_mo_coeff_print(rt_ehrenfest):
+    rt_ehrenfest.get_mo_coeff_print(rt_ehrenfest)
+
+def get_scf_orbitals(rt_ehrenfest):
+    mo_coeff = np.copy(rt_ehrenfest._scf.mo_coeff)
+    rt_ehrenfest._scf.kernel()
+    rt_ehrenfest.mo_coeff_print = rt_ehrenfest._scf.mo_coeff
+    rt_ehrenfest._scf.mo_coeff = mo_coeff
+
+def get_noscf_orbitals(rt_ehrenfest):
     # Update fragments to new geometry, solve scf problem
-    rt_mf.fragments = {}
-    fragments = []
-    basis, labels, pos = read_mol(rt_mf._scf.mol)
-    for frag_old, mask in rt_mf.fragments.items():
-        frag_labels = [labels[i] for i in frag_old.match_indices]
-        frag_pos = [pos[i] for i in frag_old.match_indices]
-        frag_mol = write_mol(basis, frag_labels, frag_pos)
-        if rt_mf._scf.istype('RKS'): frag_new = scf.RKS(frag_mol); frag_new.xc = frag_old.xc
-        elif rt_mf._scf.istype('RHF'): frag_new = scf.RHF(frag_mol)
-        elif rt_mf._scf.istype('UKS'): frag_new = scf.UKS(frag_mol); frag_new.xc = frag_old.xc
-        elif rt_mf._scf.istype('UHF'): frag_new = scf.UHF(frag_mol)
-        elif rt_mf._scf.istype('GKS'): frag_new = scf.GKS(frag_mol); frag_new.xc = frag_old.xc
-        elif rt_mf._scf.istype('GHF'): frag_new = scf.GHF(frag_mol)
-        frag_new.kernel() 
-        fragments.append(frag_new)
-    input_fragments(rt_mf, *fragments)
-
-    # Update mo_coeff_print from new fragmens:
-    if rt_mf._scf.istype('RKS'): mf_new = scf.RKS(rt_mf._scf.mol); mf_new.xc = rt_mf._scf.xc
-    elif rt_mf._scf.istype('RHF'): mf_new = scf.RHF(rt_mf._scf.mol)
-    elif rt_mf._scf.istype('UKS'): mf_new = scf.UKS(rt_mf._scf.mol); mf_new.xc = rt_mf._scf.xc
-    elif rt_mf._scf.istype('UHF'): mf_new = scf.UHF(rt_mf._scf.mol)
-    elif rt_mf._scf.istype('GKS'): mf_new = scf.GKS(rt_mf._scf.mol); mf_new.xc = rt_mf._scf.xc
-    elif rt_mf._scf.istype('GHF'): mf_new = scf.GHF(rt_mf._scf.mol)
-    
-    
-    mf_new.kernel() 
-    #rt_mf.mo_coeff_print = noscfbasis(mf_new, *fragments)
-    rt_mf.mo_coeff_print = mf_new.mo_coeff
+    basis, labels, pos = read_mol(rt_ehrenfest._scf.mol)
+    for frag in rt_ehrenfest.fragments:
+        frag_indices = frag.match_indices
+        frag_labels = [labels[i] for i in frag_indices]
+        frag_pos = [pos[i] for i in frag_indices]
+        frag.reset(write_mol(basis, frag_labels, frag_pos))
+        frag.verbose = 0
+        frag.kernel()
+        frag.match_indices = frag_indices
+    rt_ehrenfest.mo_coeff_print = noscfbasis(rt_ehrenfest._scf, *rt_ehrenfest.fragments)
 
 def restart_from_chkfile(rt_mf):
-    rt_mf._log.note(f'Restarting from chkfile: {rt_mf.chkfile}.')
+    rt_mf._log.note(f'### Restarting from chkfile: {rt_mf.chkfile} ###\n')
     with open(rt_mf.chkfile, 'r') as f:
         chk_lines = f.readlines()
         rt_mf.current_time = float(chk_lines[0].split()[3])
@@ -90,3 +83,52 @@ def update_chkfile(rt_mf):
             np.savetxt(f, rt_mf._scf.mo_coeff[0])
             f.write("Beta \n")
             np.savetxt(f, rt_mf._scf.mo_coeff[1])
+
+def print_info(rt_mf, mo_coeff_print):
+    rt_mf._log.note(f"{'=' * 25} \nBeginning Propagation For: \n")
+    mf_type = type(rt_mf._scf).__name__
+    rt_mf._log.note(f'\t Object Type: {mf_type}')
+    rt_mf._log.note(f'\t Basis Set: {rt_mf._scf.mol.basis}\n')
+    if hasattr(rt_mf._scf, 'xc'):
+        xc = rt_mf._scf.xc
+        rt_mf._log.note(f'\t Exchange-Correlation Functional: {xc}')
+    if hasattr(rt_mf._scf, 'nlc') and rt_mf._scf is not None:
+        nlc = rt_mf._scf.nlc
+        rt_mf._log.note(f'\t Non-local Dispersion Correction: {nlc}')
+
+    rt_mf._log.note('Propagation Settings: \n')
+    if rt_mf.istype('RT_Ehrenfest'):
+        rt_mf._log.note(f'\t Real-Time SCF w/ Ehrenfest Dynamics')
+    else:
+        rt_mf._log.note(f'\t Real-Time SCF')
+    rt_mf._log.note(f'\t Integrator: {rt_mf.prop}')
+    rt_mf._log.note(f'\t Max time (AU): {rt_mf.max_time}')
+    rt_mf._log.note(f'\t Time step (AU): {rt_mf.timestep}')
+    if rt_mf.istype('RT_Ehrenfest'):
+        rt_mf._log.note(f'\t Nuclear Position Update Frequency: {rt_mf.Ne_step}')
+        rt_mf._log.note(f'\t Nuclear Force Update Frequency: {rt_mf.N_step}')
+    rt_mf._log.note(f'\t Observables: \n')
+    for obs in rt_mf.observables.keys():
+        rt_mf._log.note(f' \t \t {obs}')
+    
+    if 'mo_occ' in rt_mf.observables.keys():
+        if mo_coeff_print is None:
+            if hasattr(rt_mf, 'mo_coeff_print'):
+                print(rt_mf.mo_coeff_print)
+            else:
+                rt_mf._log.note('\n*** mo_coeff_print unspecified. Molecular orbital occupations will be printed in the basis of initial mo_coeff. ***\n')
+
+                rt_mf.mo_coeff_print = rt_mf._scf.mo_coeff
+        else:
+            rt_mf.mo_coeff_print = mo_coeff_print
+
+    if rt_mf._potential:
+        rt_mf._log.note('\nApplied Potentials: \n')
+        for vapp in rt_mf._potential:
+            rt_mf._log.note(f'\t \t {type(vapp).__name__}')
+    rt_mf._log.note('\n')
+
+def _sym_orth(rt_ehrenfest):
+    # Symmetrical orthogonalization is used for Ehrenfest dynamics
+    rt_ehrenfest.evals, rt_ehrenfest.evecs = np.linalg.eigh(rt_ehrenfest.ovlp)
+    return np.linalg.multi_dot([rt_ehrenfest.evecs, np.diag(np.power(rt_ehrenfest.evals, -0.5)), rt_ehrenfest.evecs.T])

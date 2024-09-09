@@ -25,14 +25,13 @@ class RT_SCF:
 
         self.verbose = verbose
         self._potential = []
-        self.fragments = {}
+        self.fragments = []
 
         if prop is None: prop = "magnus_interpol"
-        if orth is None: orth = scf.addons.canonical_orth_
+        if orth is None: orth = scf.addons.canonical_orth_(self.ovlp)
         self.prop = prop
-        self._get_orth = orth
         
-        self.orth = self._get_orth(self.ovlp)
+        self.orth = orth
 
         if len(np.shape(self._scf.mo_coeff)) == 3:
             self.nmat = 2
@@ -53,7 +52,7 @@ class RT_SCF:
                 self.current_time = 0
         else:
             self.current_time = 0
-        
+        self._t0 = self.current_time 
         self.den_ao = self._scf.make_rdm1(mo_occ=self.occ)
         rt_observables._init_observables(self)
 
@@ -87,12 +86,14 @@ class RT_SCF:
 
     def kernel(self, mo_coeff_print=None):
         try:
-            self._log.note("Starting Propagation")
             propagate(self, mo_coeff_print)
         except Exception:
             raise
         finally:
-            self._log.note("Done")
+            if self.current_time == self.max_time + self._t0:
+                self._log.note("Done")
+            else:
+                self._log.note('Propagation Stopped Early')
             if hasattr(self, 'fh'):
                 self.fh.close()
 

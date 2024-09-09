@@ -5,7 +5,6 @@ from pyscf import lib
 from pyscf.lib import logger
 from pyscf.scf import hf, _vhf
 from pyscf.gto.mole import is_au
-#from pyscf.lo.orth import lowdin
 from scipy.linalg import fractional_matrix_power
 
 def get_force(rt_ehrenfest):

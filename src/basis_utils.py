@@ -127,6 +127,6 @@ def write_mol(basis, labels, pos):
         atom_str += '\t'.join([labels[index], str(R[0]), str(R[1]), str(R[2])]) + '\n '
     mol = gto.Mole(atom = atom_str, unit = 'Bohr')
     mol.basis = basis
-    mol.build()
+    mol.build(verbose=0)
     return mol
 
