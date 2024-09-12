@@ -17,7 +17,7 @@ class RT_Ehrenfest(RT_SCF):
         self.Ne_step = Ne_step
         self.N_step = N_step
 
-        # Ehrenfest currently only support symmetrical orthogonalization
+        # Ehrenfest currently only supports symmetrical orthogonalization
         self.orth = _sym_orth(self)
         self.den_ao = self._scf.make_rdm1(mo_coeff=self._scf.mo_coeff)
         if self.den_ao.dtype != np.complex128:
