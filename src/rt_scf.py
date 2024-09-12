@@ -27,7 +27,7 @@ class RT_SCF:
         self._potential = []
         self.fragments = []
 
-        if prop is None: prop = "magnus_interpol"
+        if prop is None: prop = 'magnus_interpol'
         if orth is None: orth = scf.addons.canonical_orth_(self.ovlp)
         self.prop = prop
         
@@ -41,7 +41,7 @@ class RT_SCF:
         if filename is None:
             self._log = logger.Logger(verbose=self.verbose)
         else:
-            self._fh = open(f"{filename}.txt", "w")
+            self._fh = open(f'{filename}.txt', 'w')
             self._log = logger.Logger(self._fh, verbose=self.verbose)
 
         self.chkfile = chkfile
@@ -91,7 +91,7 @@ class RT_SCF:
             raise
         finally:
             if self.current_time == self.max_time + self._t0:
-                self._log.note("Done")
+                self._log.note('Done')
             else:
                 self._log.note('Propagation Stopped Early')
             if hasattr(self, 'fh'):

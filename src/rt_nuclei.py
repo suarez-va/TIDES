@@ -16,12 +16,13 @@ class NUC:
         self.mass = 1836 * np.array([np.array(mol.atom_mass_list())[i] * np.ones(3) for i in range(self.nnuc)])
         self.vel = np.zeros((self.nnuc, 3))
         self.force = np.zeros((self.nnuc, 3))
+        self.spin = mol.spin
 
     def get_mol(self):
-        return write_mol(self.basis, self.labels, self.pos)
+        return write_mol(self.basis, self.labels, self.pos, self.spin)
 
     def get_ke(self):
-        return 0.5 * self.mass * self.vel**2
+        return np.sum(0.5 * self.mass * self.vel**2, axis=1)
 
     def sample_vel(self, beta):
         #np.random.seed(47)

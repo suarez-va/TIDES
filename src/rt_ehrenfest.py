@@ -71,7 +71,6 @@ class RT_Ehrenfest(RT_SCF):
         self.ovlp = self._scf.get_ovlp()
         self.evals, self.evecs = np.linalg.eigh(self.ovlp)
         self.orth = _sym_orth(self)
-        self._log.debug3(f"{'&'*25} Mean Field Object Updated {'&'*25}\n {vars(self._scf)} \n{'&'*25}\n")
 
     def update_grad(self):
         self._grad = self._scf.apply(self._grad_func)

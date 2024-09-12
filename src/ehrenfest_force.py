@@ -114,7 +114,7 @@ def grad_elec_unrestricted(mf_grad, den_ao=None, etilde=None, v=None, Vinv=None)
     return de
 
 def grad_lowdin(mol):
-    S = mol.intor("int1e_ovlp")
+    S = mol.intor('int1e_ovlp')
     Vinv = fractional_matrix_power(S, -0.5)
     e, v = numpy.linalg.eigh(S)
     sqrt_e = numpy.sqrt(e)

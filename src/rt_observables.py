@@ -2,6 +2,7 @@ import numpy as np
 import rt_output
 from basis_utils import read_mol
 from rt_utils import update_mo_coeff_print
+from pyscf import lib
 
 '''
 Real-time Observable Functions
@@ -47,16 +48,13 @@ def get_energy(rt_mf, den_ao):
     rt_mf._energy = []
     rt_mf._energy.append(rt_mf._scf.energy_tot(dm=den_ao))
     if rt_mf.istype('RT_Ehrenfest'):
-        ke = np.sum(rt_mf.nuc.get_ke())
-        rt_mf._energy[0] += ke
-        rt_mf._kinetic_energy = []
-        rt_mf._kinetic_energy.append(ke)
+        ke = rt_mf.nuc.get_ke()
+        rt_mf._energy[0] += np.sum(ke)
+        rt_mf._kinetic_energy = ke
     for frag in rt_mf.fragments:
         rt_mf._energy.append(frag.energy_tot(dm=den_ao[frag.mask]))
         if rt_mf.istype('RT_Ehrenfest'):
-            ke = np.sum(rt_mf.nuc.get_ke()[frag.match_indices])
-            rt_mf._energy[-1] += ke
-            rt_mf._kinetic_energy.append(ke)
+            rt_mf._energy[-1] += np.sum(ke[frag.match_indices])
             
 
 def get_charge(rt_mf, den_ao):
@@ -113,8 +111,4 @@ def get_mag(rt_mf, den_ao):
     
 
 def get_nuclei(rt_mf, den_ao):
-    # So I'm thinking max verbosity: nuclei[0] = labels, nuclei[1]=pos, nuclei[2]=vel, nuclei[3]=force, match atom label to fragments H1 O2 ect.
-    rt_mf._nuclei = []
-    basis, labels, pos = read_mol(rt_mf._scf.mol)
-    rt_mf._nuclei.append([labels])
-    rt_mf._nuclei.append(pos)
+    rt_mf._nuclei = [rt_mf.nuc.labels, rt_mf.nuc.pos*lib.param.BOHR, rt_mf.nuc.vel*lib.param.BOHR, rt_mf.nuc.force]
