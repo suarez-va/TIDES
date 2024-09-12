@@ -10,25 +10,31 @@ import rt_scf
 dimer = gto.Mole()#basis = 'augccpvdz')
 water1 = gto.Mole()#basis = 'augccpvdz')
 water2 = gto.Mole()#basis = 'augccpvdz')
-
 dimer.atom = '''
  O               -0.32314674    -1.47729686     0.00097471
  H               -1.27378046    -1.61942308     0.05721373
  H               -0.21933958    -0.51854906    -0.08219258
+ H                0.76772643     1.70333069    -0.74899050
  O                0.30561043     1.34554668    -0.00175700
  H                0.78912388     1.57738619     0.78525838
- H                0.76772643     1.70333069    -0.74899050
 '''
+ #H                0.76772643     1.70333069    -0.74899050
+
+
 water1.atom = '''
  O               -0.32314674    -1.47729686     0.00097471
  H               -1.27378046    -1.61942308     0.05721373
  H               -0.21933958    -0.51854906    -0.08219258
+ H                0.76772643     1.70333069    -0.74899050
 '''
+water1.spin=1
 water2.atom = '''
  O                0.30561043     1.34554668    -0.00175700
  H                0.78912388     1.57738619     0.78525838
- H                0.76772643     1.70333069    -0.74899050
 '''
+water2.spin=1
+#H                0.76772643     1.70333069    -0.74899050
+#'''
 
 dimer.build()
 water1.build()
@@ -52,7 +58,7 @@ water2.kernel()
 #noscf_orbitals = basis_utils.noscfbasis(dimer, water1, water2)
 #noscf_orbitals = dimer.mo_coeff
 
-rt_water = rt_ehrenfest.RT_Ehrenfest(dimer, 1, 250, filename='H2O', prop="magnus_interpol", frequency=1, verbose=3, Ne_step=1, N_step=1, get_mo_coeff_print=get_noscf_orbitals)
+rt_water = rt_ehrenfest.RT_Ehrenfest(dimer, 1, 250, filename='H2O', prop="magnus_interpol", frequency=1, verbose=9, Ne_step=1, N_step=1, get_mo_coeff_print=get_noscf_orbitals)
 
 #rt_water = rt_scf.RT_SCF(dimer, 1, 10, filename='H2O', prop="magnus_interpol", frequency=1, chkfile='a', verbose=3)
 # Declare which observables to be calculated/printed

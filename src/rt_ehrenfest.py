@@ -17,7 +17,7 @@ class RT_Ehrenfest(RT_SCF):
         self.Ne_step = Ne_step
         self.N_step = N_step
 
-        # Ehrenfest currently only support symmetrical orthogonalization
+        # Ehrenfest currently only supports symmetrical orthogonalization
         self.orth = _sym_orth(self)
         self.den_ao = self._scf.make_rdm1(mo_coeff=self._scf.mo_coeff)
         if self.den_ao.dtype != np.complex128:
@@ -71,7 +71,6 @@ class RT_Ehrenfest(RT_SCF):
         self.ovlp = self._scf.get_ovlp()
         self.evals, self.evecs = np.linalg.eigh(self.ovlp)
         self.orth = _sym_orth(self)
-        self._log.debug3(f"{'&'*25} Mean Field Object Updated {'&'*25}\n {vars(self._scf)} \n{'&'*25}\n")
 
     def update_grad(self):
         self._grad = self._scf.apply(self._grad_func)

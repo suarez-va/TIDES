@@ -96,6 +96,7 @@ def plot_mo_occ(time, mo_occ, name, mo_lim=10):
         plt.plot(time / 41.34, mo_occ[:, i], label=i)
     plt.xlabel('Time(fs)', fontsize=15)
     plt.ylabel('Occupation', fontsize=15)
+    #plt.ylim([-0.1,2.1])
     plt.legend()
     plt.savefig(name, bbox_inches='tight')
 
@@ -144,19 +145,23 @@ def get_length(coords, atoms):
 
 def main():
     
-    filename = 'H2O.txt'
-    time, energy, dipole, mo_occ, charge, mag, coords = parse_output(filename, mol_length=6)
+    filename = 'NaCl.txt'
+    #filename = 'b.out'
+    time, energy, dipole, mo_occ, charge, mag, coords = parse_output(filename, mol_length=2)
     
-    OOlen = get_length(coords, [1,4])
-    OHlen = get_length(coords, [1,5])
+    #OOlen = get_length(coords, [1,4])
+    #OHlen = get_length(coords, [1,5])
+    nacllen = get_length(coords, [1,2])
     plot_energy(time, energy, 'en.png')
-    plot_lens(time, OOlen, 'OOlen.png')
-    plot_lens(time, OHlen, 'OHlen.png')
-    plot_mo_occ(time, mo_occ, 'moc.png', mo_lim=10)
+    plot_lens(time, nacllen, 'naccllen.png')
+    #plot_energy(time, energy, 'en.png')
+    #plot_lens(time, OOlen, 'OOlen.png')
+    #plot_lens(time, OHlen, 'OHlen.png')
+    #plot_mo_occ(time, mo_occ, 'moc.png', mo_lim=15)
     #plot_mag(time, mag[:,0], 'magx.png')
     #plot_mag(time, mag[:,1], 'magy.png')
     #plot_mag(time, mag[:,2], 'magz.png')
-    plot_charge(time, charge, 'charge.png')
+    #plot_charge(time, charge, 'charge.png')
 
 if __name__ == '__main__':
     main()

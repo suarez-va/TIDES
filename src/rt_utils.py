@@ -50,7 +50,7 @@ def get_noscf_orbitals(rt_ehrenfest):
         frag_indices = frag.match_indices
         frag_labels = [labels[i] for i in frag_indices]
         frag_pos = [pos[i] for i in frag_indices]
-        frag.reset(write_mol(basis, frag_labels, frag_pos))
+        frag.reset(write_mol(basis, frag_labels, frag_pos, frag.mol.spin))
         frag.verbose = 0
         frag.kernel()
         frag.match_indices = frag_indices
@@ -65,7 +65,7 @@ def restart_from_chkfile(rt_mf):
             rt_mf._scf.mo_coeff = np.loadtxt(chk_lines[2:], dtype=np.complex128)
         else:
             for i, line in enumerate(chk_lines):
-                if "Beta" in line:
+                if 'Beta' in line:
                     b0 = i
                     break
 
@@ -75,26 +75,24 @@ def restart_from_chkfile(rt_mf):
 
 def update_chkfile(rt_mf):
     with open(rt_mf.chkfile, 'w') as f:
-        f.write(f"Current Time (AU): {rt_mf.current_time} \nMO Coeffs: \n")
+        f.write(f'Current Time (AU): {rt_mf.current_time} \nMO Coeffs: \n')
         if rt_mf.nmat == 1:
             np.savetxt(f, rt_mf._scf.mo_coeff)
         else:
-            f.write("Alpha \n")
+            f.write('Alpha \n')
             np.savetxt(f, rt_mf._scf.mo_coeff[0])
-            f.write("Beta \n")
+            f.write('Beta \n')
             np.savetxt(f, rt_mf._scf.mo_coeff[1])
 
 def print_info(rt_mf, mo_coeff_print):
-    rt_mf._log.note(f"{'=' * 25} \nBeginning Propagation For: \n")
+    rt_mf._log.note(f'{"=" * 25} \nBeginning Propagation For: \n')
     mf_type = type(rt_mf._scf).__name__
     rt_mf._log.note(f'\t Object Type: {mf_type}')
     rt_mf._log.note(f'\t Basis Set: {rt_mf._scf.mol.basis}\n')
     if hasattr(rt_mf._scf, 'xc'):
-        xc = rt_mf._scf.xc
-        rt_mf._log.note(f'\t Exchange-Correlation Functional: {xc}')
-    if hasattr(rt_mf._scf, 'nlc') and rt_mf._scf is not None:
-        nlc = rt_mf._scf.nlc
-        rt_mf._log.note(f'\t Non-local Dispersion Correction: {nlc}')
+        rt_mf._log.note(f'\t Exchange-Correlation Functional: {rt_mf._scf.xc}')
+    if hasattr(rt_mf._scf, 'nlc') and rt_mf._scf.nlc != '':
+        rt_mf._log.note(f'\t Non-local Dispersion Correction: {rt_mf._scf.nlc}')
 
     rt_mf._log.note('Propagation Settings: \n')
     if rt_mf.istype('RT_Ehrenfest'):

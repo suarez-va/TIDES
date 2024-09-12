@@ -54,4 +54,4 @@ def abs_spec(time, dipole, filename, kick_str=1, pad=None, damp=None, preprocess
     im_dipole_f = np.abs(im_dipole_f[:m])
     osc_str = (4 * np.pi) / (3 * c * kick_str) * w * im_dipole_f
     abs_vs_freq = np.transpose([w,osc_str])
-    np.savetxt(filename + ".txt", abs_vs_freq)
+    np.savetxt(filename + '.txt', abs_vs_freq)
