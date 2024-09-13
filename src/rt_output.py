@@ -55,11 +55,11 @@ def _print_mag(rt_mf):
 
 def _print_nuclei(rt_mf):
     nuclei = rt_mf._nuclei
-    rt_mf._log.note(f'Nuclear Coordinates (AU):')
+    rt_mf._log.note(f'Nuclear Coordinates (Angstrom):')
     for atom in zip(nuclei[0], nuclei[1]):
         rt_mf._log.note(f' {atom[0]} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[1]))}')
     rt_mf._log.note(' ')
-    rt_mf._log.info(f'Nuclear Velocities (AU):')
+    rt_mf._log.info(f'Nuclear Velocities (Angstrom / AU):')
     for atom in zip(nuclei[0], nuclei[2]):
         rt_mf._log.info(f' {atom[0]} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[1]))}')
     rt_mf._log.info(' ')
