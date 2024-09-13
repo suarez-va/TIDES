@@ -33,11 +33,6 @@ class RT_SCF:
         
         self.orth = orth
 
-        if len(np.shape(self._scf.mo_coeff)) == 3:
-            self.nmat = 2
-        else:
-            self.nmat = 1
-
         if filename is None:
             self._log = logger.Logger(verbose=self.verbose)
         else:
@@ -54,6 +49,10 @@ class RT_SCF:
             self.current_time = 0
         self._t0 = self.current_time 
         self.den_ao = self._scf.make_rdm1(mo_occ=self.occ)
+        if len(np.shape(self.den_ao)) == 3:
+            self.nmat = 2
+        else:
+            self.nmat = 1
         rt_observables._init_observables(self)
 
     def istype(self, type_code):
