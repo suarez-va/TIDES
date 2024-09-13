@@ -30,7 +30,7 @@ def _print_energy(rt_mf):
 
 def _print_mo_occ(rt_mf):
     mo_occ = rt_mf._mo_occ
-    rt_mf._log.note(f'Molecular Orbital Occupations: {' '.join(map(str,mo_occ))} \n')
+    rt_mf._log.note(f'Molecular Orbital Occupations: {" ".join(map(str,mo_occ))} \n')
 
 def _print_charge(rt_mf):
     charge = rt_mf._charge
@@ -41,30 +41,30 @@ def _print_charge(rt_mf):
 
 def _print_dipole(rt_mf):
     dipole = rt_mf._dipole
-    rt_mf._log.note(f'Total Dipole Moment [X, Y, Z] (AU): {' '.join(map(str,dipole[0]))} \n')
+    rt_mf._log.note(f'Total Dipole Moment [X, Y, Z] (AU): {" ".join(map(str,dipole[0]))} \n')
     if len(dipole) > 1:
         for index, fragment in enumerate(dipole[1:]):
-            rt_mf._log.note(f'Fragment {index + 1} Dipole Moment [X, Y, Z] (AU): {' '.join(map(str,fragment))} \n')
+            rt_mf._log.note(f'Fragment {index + 1} Dipole Moment [X, Y, Z] (AU): {" ".join(map(str,fragment))} \n')
 
 def _print_mag(rt_mf):
     mag = rt_mf._mag
-    rt_mf._log.note(f'Total Magnetization [X, Y, Z]: {' '.join(map(str,np.real(mag[0])))} \n')
+    rt_mf._log.note(f'Total Magnetization [X, Y, Z]: {" ".join(map(str,np.real(mag[0])))} \n')
     if len(mag) > 1:
         for index, fragment in enumerate(mag[1:]):
-            rt_mf._log.note(f'Fragment {index + 1} Magnetization [X, Y, Z] (AU): {' '.join(map(str,fragment))} \n')
+            rt_mf._log.note(f'Fragment {index + 1} Magnetization [X, Y, Z] (AU): {" ".join(map(str,fragment))} \n')
 
 def _print_nuclei(rt_mf):
     nuclei = rt_mf._nuclei
     rt_mf._log.note(f'Nuclear Coordinates (AU):')
     for atom in zip(nuclei[0], nuclei[1]):
-        rt_mf._log.note(f' {atom[0]} \t {'\t'.join(map(lambda x: f"{x:.11f}",atom[1]))}')
+        rt_mf._log.note(f' {atom[0]} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[1]))}')
     rt_mf._log.note(' ')
     rt_mf._log.info(f'Nuclear Velocities (AU):')
     for atom in zip(nuclei[0], nuclei[2]):
-        rt_mf._log.info(f' {atom[0]} \t {'\t'.join(map(lambda x: f"{x:.11f}",atom[1]))}')
+        rt_mf._log.info(f' {atom[0]} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[1]))}')
     rt_mf._log.info(' ')
     rt_mf._log.debug(f'Nuclear Forces (AU):')
     for atom in zip(nuclei[0], nuclei[3]):
-        rt_mf._log.debug(f' {atom[0]} \t {'\t'.join(map(lambda x: f"{x:.11f}",atom[1]))}')
+        rt_mf._log.debug(f' {atom[0]} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[1]))}')
     rt_mf._log.debug(' ')
 
