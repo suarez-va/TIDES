@@ -89,7 +89,7 @@ class RT_SCF:
         except Exception:
             raise
         finally:
-            if self.current_time == self.max_time + self._t0:
+            if np.isclose(self.current_time, self.max_time + self._t0):
                 self._log.note('Done')
             else:
                 self._log.note('Propagation Stopped Early')
