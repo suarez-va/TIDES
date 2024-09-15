@@ -1,8 +1,7 @@
 import numpy as np
 from pyscf.tools import molden
-from pyscf.lo.orth import orth_ao
-from pyscf import gto
-import scipy
+from pyscf import gto, scf
+from scipy.linalg import inv
 
 '''
 Basis Utility Functions
@@ -51,7 +50,7 @@ def mask_fragment_basis(mf, match_indices):
     else:
         return np.ix_((0,1),match_basis, match_basis)
 
-def noscfbasis(mf, *fragments, reorder=True):
+def noscfbasis(mf, *fragments, reorder=True, orth=None):
     total_dim = np.shape(mf.mo_coeff)
     noscf_orbitals = np.zeros(total_dim)
     
@@ -62,15 +61,17 @@ def noscfbasis(mf, *fragments, reorder=True):
     if reorder:
         # Reorder so that all occupied orbitals appear before virtual orbitals
         noscf_orbitals = reorder_noscf(noscf_orbitals, mf, *fragments)
-
-    # Orthogonalize
-    old_orbitals = mf.mo_coeff
-    mf.mo_coeff = noscf_orbitals
-    orth_ao(mf)
-    # Restore original mo_coeff to mf, return noscf mo_coeff
-    noscf_orbitals = mf.mo_coeff
-    mf.mo_coeff = old_orbitals     
-    return noscf_orbitals
+    
+    # Orthogonalize noscf orbitals
+    if orth is None:
+        orth = scf.addons.canonical_orth_(mf.get_ovlp())
+    noscf_orth = np.matmul(inv(orth), noscf_orbitals).astype(np.complex128)
+    if len(total_dim) == 3:
+        noscf_orth[0] = gs_orthogonalize(noscf_orth[0])
+        noscf_orth[1] = gs_orthogonalize(noscf_orth[1])
+    else:
+        noscf_orth = gs_orthogonalize(noscf_orth)
+    return np.matmul(orth, noscf_orth)
 
 def reorder_noscf(noscf_orbitals, mf, *fragments):
     if len(np.shape(mf.mo_coeff)) == 3:
@@ -113,6 +114,14 @@ def occ_sort(occ_list):
         else:
             nvirt.append(i)
     return tuple(nocc + nvirt)
+
+def gs_orthogonalize(nonorthog):
+    orthog = []
+    for c in nonorthog.astype(np.complex128).T:
+        orthog_c = c - np.sum(np.dot(c, c_n1)*c_n1 for c_n1 in orthog)
+        orthog.append(orthog_c / np.linalg.norm(orthog_c))
+    orthog = np.array(orthog).astype(np.complex128).T
+    return orthog
 
 def read_mol(mol):
     _atom = mol._atom
