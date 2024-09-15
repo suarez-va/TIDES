@@ -94,7 +94,7 @@ def print_info(rt_mf, mo_coeff_print):
     if hasattr(rt_mf._scf, 'nlc') and rt_mf._scf.nlc != '':
         rt_mf._log.note(f'\t Non-local Dispersion Correction: {rt_mf._scf.nlc}')
 
-    rt_mf._log.note('Propagation Settings: \n')
+    rt_mf._log.note('\nPropagation Settings: \n')
     if rt_mf.istype('RT_Ehrenfest'):
         rt_mf._log.note(f'\t Real-Time SCF w/ Ehrenfest Dynamics')
     else:

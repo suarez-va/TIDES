@@ -4,7 +4,7 @@ import rt_observables
 import rt_output
 from rt_utils import update_chkfile, print_info
 import sys
-np.set_printoptions(linewidth=sys.maxsize)
+np.set_printoptions(threshold=sys.maxsize, linewidth=sys.maxsize)
 
 '''
 Real-time Propagation
