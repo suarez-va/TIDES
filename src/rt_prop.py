@@ -15,11 +15,11 @@ def propagate(rt_mf, mo_coeff_print):
     rt_observables._remove_suppressed_observables(rt_mf)
 
     rt_mf._integrate_function = rt_integrators.get_integrator(rt_mf)
+    rt_mf._fock_orth = rt_mf.get_fock_orth(rt_mf.den_ao)
     if rt_mf.prop == 'magnus_step':
         rt_mf.mo_coeff_orth_old = rt_mf.rotate_coeff_to_orth(rt_mf._scf.mo_coeff)
     if rt_mf.prop == 'magnus_interpol':
-        rt_mf._fock_orth = rt_mf.get_fock_orth(rt_mf.den_ao)
-        rt_mf._fock_orth_n12dt = rt_mf.get_fock_orth(rt_mf.den_ao)
+        rt_mf._fock_orth_n12dt = np.copy(rt_mf._fock_orth)
         if not hasattr(rt_mf, 'magnus_tolerance'): rt_mf.magnus_tolerance = 1e-7
         if not hasattr(rt_mf, 'magnus_maxiter'): rt_mf.magnus_maxiter = 15
 
