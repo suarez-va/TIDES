@@ -16,7 +16,10 @@ def _init_observables(rt_mf):
         'mag'     : False,
         'mo_occ'  : False,
         'nuclei'  : False,
-    }
+        'mo_coeff': False,
+        'den_ao'  : False,
+        'fock_ao' : False,
+        }
 
     rt_mf._observables_functions = {
         'energy'  : [get_energy, rt_output._print_energy],
@@ -25,7 +28,11 @@ def _init_observables(rt_mf):
         'mag'     : [get_mag, rt_output._print_mag],
         'mo_occ'  : [get_mo_occ, rt_output._print_mo_occ],
         'nuclei'  : [get_nuclei, rt_output._print_nuclei],
-    }
+        'mo_coeff': [lambda *args: None, rt_output._print_mo_coeff],
+        'den_ao'  : [lambda *args: None, rt_output._print_den_ao],
+        'fock_ao' : [lambda *args: None, rt_output._print_fock_ao],
+        }
+
 
 
 def _remove_suppressed_observables(rt_mf):
