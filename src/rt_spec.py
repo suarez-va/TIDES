@@ -45,7 +45,7 @@ def abs_spec(time, pole, filename, kick_str=1, pad=None, damp=None, hann_damp=No
     wmax = m * dw
     w = np.linspace(wmin, wmax, m)
 
-    im_pole_f = np.zeros(pole_t[:,0].shape)
+    im_pole_f = np.zeros(pole_t.shape)
     for i in range(pole_t.shape[1]):
         pole_f = fft(pole_t[:,i])
         im_pole_f[:,i] = np.imag(pole_f)
