@@ -8,7 +8,7 @@ Real-time SCF Spectra
 '''
 
 c = lib.param.LIGHT_SPEED
-def abs_spec(time, pole, filename, kick_str=1, pad=None, damp=None, preprocess_zero=True):
+def abs_spec(time, pole, filename, kick_str=1, pad=None, damp=None, hann_damp=None, preprocess_zero=True):
     '''
     Performs 1D Fourier Transform on time-dependent dipole moment.
     Adapted from NWChem's fft1d.m GNU Octave script (Kenneth Lopata), which can be found at https://nwchemgit.github.io/RT-TDDFT.html#absorption-spectrum-of-water
@@ -22,7 +22,15 @@ def abs_spec(time, pole, filename, kick_str=1, pad=None, damp=None, preprocess_z
     if damp:
         d = np.exp((-1 * (time - time[0])) / damp)
         pole_t *= d[:, np.newaxis]
-
+    
+    if hann_damp:
+        if type(hann_damp) is not tuple and type(hann_damp) is not list:
+            raise Exception('hann_damp must be a list/tuple with [t0, sigma]')
+        t0 = hann_damp[0]
+        sigma = hann_damp[1]
+        d = np.sin(np.pi / sigma * (time - t0)) ** 2
+        pole_t *= d[:, np.newaxis]
+    
     if pad:
         zeros = np.zeros((pole_t.shape[1], pad))
         pole_t = np.row_stack((pole_t, zeros.T))
@@ -37,12 +45,12 @@ def abs_spec(time, pole, filename, kick_str=1, pad=None, damp=None, preprocess_z
     wmax = m * dw
     w = np.linspace(wmin, wmax, m)
 
-    im_pole_f = np.zeros(len(pole_t[:,0]))
+    im_pole_f = np.zeros(pole_t[:,0].shape)
     for i in range(pole_t.shape[1]):
         pole_f = fft(pole_t[:,i])
-        im_pole_f += np.imag(pole_f)
+        im_pole_f[:,i] = np.imag(pole_f)
 
-    im_pole_f = np.abs(im_pole_f[:m])
-    osc_str = (4 * np.pi) / (3 * c * kick_str) * w * im_pole_f
+    im_pole_f = np.abs(im_pole_f[:m,:])
+    osc_str = (4 * np.pi) / (c * kick_str) * w * im_pole_f
     abs_vs_freq = np.transpose([w,osc_str])
     np.savetxt(filename + '.txt', abs_vs_freq)
