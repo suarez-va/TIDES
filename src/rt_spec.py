@@ -51,5 +51,5 @@ def abs_spec(time, pole, filename, kick_str=1, pad=None, damp=None, hann_damp=No
         osc_str.append(np.abs(np.imag(pole_f[:m])) * (4 * np.pi) / (c * kick_str) * w)
 
     osc_str = np.array(osc_str).T
-    abs_vs_freq = np.transpose([w,osc_str])
+    abs_vs_freq = np.column_stack([w,osc_str])
     np.savetxt(filename + '.txt', abs_vs_freq)
