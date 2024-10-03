@@ -17,9 +17,10 @@ class NUC:
         self.vel = np.zeros((self.nnuc, 3))
         self.force = np.zeros((self.nnuc, 3))
         self.spin = mol.spin
+        self.chage = mol.charge
 
     def get_mol(self):
-        return write_mol(self.basis, self.labels, self.pos, self.spin)
+        return write_mol(self.basis, self.labels, self.pos, self.spin, self.charge)
 
     def get_ke(self):
         return np.sum(0.5 * self.mass * self.vel**2, axis=1)

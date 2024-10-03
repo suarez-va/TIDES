@@ -122,7 +122,7 @@ def write_mol(basis, labels, pos, spin=0):
     atom_str = '\n '
     for index, R in enumerate(pos):
         atom_str += '\t'.join([labels[index], str(R[0]), str(R[1]), str(R[2])]) + '\n '
-    mol = gto.Mole(atom=atom_str, unit='Bohr', spin=spin)
+    mol = gto.Mole(atom=atom_str, unit='Bohr', spin=spin, charge=charge)
     mol.basis = basis
     mol.build(verbose=0)
     return mol
