@@ -107,12 +107,13 @@ def print_info(rt_mf, mo_coeff_print):
         rt_mf._log.note(f'\t Nuclear Force Update Frequency: {rt_mf.N_step}')
     rt_mf._log.note(f'\t Observables: \n')
     for obs in rt_mf.observables.keys():
-        rt_mf._log.note(f' \t \t {obs}')
+        if rt_mf.observables[obs]:
+            rt_mf._log.note(f' \t \t {obs}')
     
-    if 'mo_occ' in rt_mf.observables.keys():
+    if rt_mf.observables['mo_occ']:
         if mo_coeff_print is None:
             if hasattr(rt_mf, 'mo_coeff_print'):
-                print(rt_mf.mo_coeff_print)
+                rt_mf._log.note('\n\tPrinting molecular orbital occupations in the basis of self.mo_coeff_print\n')
             else:
                 rt_mf._log.note('\n*** mo_coeff_print unspecified. Molecular orbital occupations will be printed in the basis of initial mo_coeff. ***\n')
 

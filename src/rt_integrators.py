@@ -11,7 +11,7 @@ def magnus_step(rt_mf):
     U(t) = exp(-i*2dt*F')
     '''
 
-    fock_orth = rt_mf.get_fock_orth(rt_mf.den_ao)
+    fock_orth = rt_mf._fock_orth
 
     # Update time, mol is updated here if rt_mf is Ehrenfest obj
     rt_mf.update_time()
@@ -23,6 +23,7 @@ def magnus_step(rt_mf):
     rt_mf.mo_coeff_orth_old = rt_mf.rotate_coeff_to_orth(rt_mf._scf.mo_coeff)
     rt_mf._scf.mo_coeff = rt_mf.rotate_coeff_to_ao(mo_coeff_orth_new)
     rt_mf.den_ao = rt_mf._scf.make_rdm1(mo_occ=rt_mf.occ)
+    rt_mf._fock_orth = rt_mf.get_fock_orth(rt_mf.den_ao)
 
 def magnus_interpol(rt_mf):
     '''
@@ -77,7 +78,7 @@ def rk4(rt_mf):
     dC' = -i * dt * (F'C')
     '''
 
-    fock_orth = rt_mf.get_fock_orth(rt_mf.den_ao)
+    fock_orth = rt_mf._fock_orth
     
     # Update time, mol is updated here if rt_mf is Ehrenfest obj
     rt_mf.update_time()
@@ -104,6 +105,7 @@ def rk4(rt_mf):
 
     rt_mf._scf.mo_coeff = mo_coeff_ao_new
     rt_mf.den_ao = rt_mf._scf.make_rdm1(mo_occ=rt_mf.occ)
+    rt_mf._fock_orth = rt_mf.get_fock_orth(rt_mf.den_ao)
 
 INTEGRATORS = {
     'magnus_step' : magnus_step,

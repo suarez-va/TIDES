@@ -1,4 +1,6 @@
 import numpy as np
+import sys
+np.set_printoptions(threshold=sys.maxsize, linewidth=sys.maxsize)
 
 '''
 Real-time Output Functions
@@ -68,3 +70,11 @@ def _print_nuclei(rt_mf):
         rt_mf._log.debug(f' {atom[0]} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[1]))}')
     rt_mf._log.debug(' ')
 
+def _print_mo_coeff(rt_mf):
+    rt_mf._log.note(f'\n{"*"*25} Molecular Orbital Coefficients (AO Basis): {"*"*25}\n {rt_mf._scf.mo_coeff} \n{"*"*50}\n')
+
+def _print_den_ao(rt_mf):
+    rt_mf._log.note(f'\n{"@"*25} Density Matrix (AO Basis): {"@"*25}\n {rt_mf.den_ao} \n{"@"*50}\n')
+
+def _print_fock_ao(rt_mf):
+    rt_mf._log.note(f'\n{"+"*25} Fock Matrix (AO Basis): {"+"*25}\n {rt_mf.fock_ao} \n{"+"*50}\n') 

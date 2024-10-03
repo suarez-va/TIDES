@@ -19,7 +19,7 @@ class RT_Ehrenfest(RT_SCF):
 
         # Ehrenfest currently only supports symmetrical orthogonalization
         self.orth = _sym_orth(self)
-        self.den_ao = self._scf.make_rdm1(mo_coeff=self._scf.mo_coeff)
+        self.den_ao = self._scf.make_rdm1(mo_occ=self.occ)
         if self.den_ao.dtype != np.complex128:
             self.den_ao = self.den_ao.astype(np.complex128)
   
