@@ -93,6 +93,8 @@ def print_info(rt_mf, mo_coeff_print):
         rt_mf._log.note(f'\t Exchange-Correlation Functional: {rt_mf._scf.xc}')
     if hasattr(rt_mf._scf, 'nlc') and rt_mf._scf.nlc != '':
         rt_mf._log.note(f'\t Non-local Dispersion Correction: {rt_mf._scf.nlc}')
+    if hasattr(rt_mf._scf, 'disp') and rt_mf._scf.disp != None:
+        rt_mf._log.note(f'\t Dispersion Correction: {rt_mf._scf.disp}')
 
     rt_mf._log.note('\nPropagation Settings: \n')
     if rt_mf.istype('RT_Ehrenfest'):

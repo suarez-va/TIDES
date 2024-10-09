@@ -10,27 +10,29 @@ Real-time Observable Functions
 
 def _init_observables(rt_mf):
     rt_mf.observables = {
-        'energy'  : False,
-        'charge'  : False,
-        'dipole'  : False,
-        'mag'     : False,
-        'mo_occ'  : False,
-        'nuclei'  : False,
-        'mo_coeff': False,
-        'den_ao'  : False,
-        'fock_ao' : False,
+        'energy'     : False,
+        'charge'     : False,
+        'dipole'     : False,
+        'quadrupole' : False,
+        'mag'        : False,
+        'mo_occ'     : False,
+        'nuclei'     : False,
+        'mo_coeff'   : False,
+        'den_ao'     : False,
+        'fock_ao'    : False,
         }
 
     rt_mf._observables_functions = {
-        'energy'  : [get_energy, rt_output._print_energy],
-        'charge'  : [get_charge, rt_output._print_charge],
-        'dipole'  : [get_dipole, rt_output._print_dipole],
-        'mag'     : [get_mag, rt_output._print_mag],
-        'mo_occ'  : [get_mo_occ, rt_output._print_mo_occ],
-        'nuclei'  : [get_nuclei, rt_output._print_nuclei],
-        'mo_coeff': [lambda *args: None, rt_output._print_mo_coeff],
-        'den_ao'  : [lambda *args: None, rt_output._print_den_ao],
-        'fock_ao' : [lambda *args: None, rt_output._print_fock_ao],
+        'energy'     : [get_energy, rt_output._print_energy],
+        'charge'     : [get_charge, rt_output._print_charge],
+        'dipole'     : [get_dipole, rt_output._print_dipole],
+        'quadrupole' : [get_quadrupole, rt_output._print_quadrupole],
+        'mag'        : [get_mag, rt_output._print_mag],
+        'mo_occ'     : [get_mo_occ, rt_output._print_mo_occ],
+        'nuclei'     : [get_nuclei, rt_output._print_nuclei],
+        'mo_coeff'   : [lambda *args: None, rt_output._print_mo_coeff],
+        'den_ao'     : [lambda *args: None, rt_output._print_den_ao],
+        'fock_ao'    : [lambda *args: None, rt_output._print_fock_ao],
         }
 
 
@@ -83,6 +85,11 @@ def get_dipole(rt_mf, den_ao):
     for frag in rt_mf.fragments:
         rt_mf._dipole.append(frag.dip_moment(mol=frag.mol, dm=den_ao[frag.mask], unit='A.U.', verbose=1))
     
+def get_quadrupole(rt_mf, den_ao):
+    rt_mf._quadrupole = []
+    rt_mf._quadrupole.append(rt_mf._scf.quad_moment(mol=rt_mf._scf.mol, dm=rt_mf.den_ao,unit='A.U.', verbose=1))
+    for frag in rt_mf.fragments:
+        rt_mf._quadrupole.append(frag.quad_moment(mol=frag.mol, dm=den_ao[frag.mask], unit='A.U.', verbose=1))
 
 def get_mo_occ(rt_mf, den_ao):
     # P_mo = C+SP_aoSC

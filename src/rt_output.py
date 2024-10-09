@@ -48,6 +48,13 @@ def _print_dipole(rt_mf):
         for index, fragment in enumerate(dipole[1:]):
             rt_mf._log.note(f'Fragment {index + 1} Dipole Moment [X, Y, Z] (AU): {" ".join(map(str,fragment))} \n')
 
+def _print_quadrupole(rt_mf):
+    quadrupole = rt_mf._quadrupole
+    rt_mf._log.note(f'Total Quadrupole Moment [[XX,XY,XZ], [YX,YY,YZ], [ZX,ZY,ZZ]] (AU): {" ".join(map(str,quadrupole[0]))} \n')
+    if len(quadrupole) > 1:
+        for index, fragment in enumerate(quadrupole[1:]):
+            rt_mf._log.note(f'Fragment {index + 1} Quadrupole Moment [X, Y, Z] (AU): {" ".join(map(str,fragment))} \n')
+
 def _print_mag(rt_mf):
     mag = rt_mf._mag
     rt_mf._log.note(f'Total Magnetization [X, Y, Z]: {" ".join(map(str,np.real(mag[0])))} \n')

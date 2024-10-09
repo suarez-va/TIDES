@@ -67,6 +67,11 @@ def grad_elec_restricted(mf_grad, den_ao=None, etilde=None, v=None, Vinv=None):
         PF = numpy.einsum('ij,jk->ik', den_ao, fock_ao)
         de[k] += -2 * numpy.einsum('xij,ji->x', VinvdV, PF).real
 
+    if mf_grad.mol.symmetry:
+        de = mf_grad.symmetrize(grad_elec, atmlst)
+    if mf_grad.base.do_disp():
+        de += mf_grad.get_dispersion()
+
     return de
 
 def grad_elec_unrestricted(mf_grad, den_ao=None, etilde=None, v=None, Vinv=None):
@@ -110,6 +115,11 @@ def grad_elec_unrestricted(mf_grad, den_ao=None, etilde=None, v=None, Vinv=None)
         VinvdV = numpy.einsum('ij,xjk->xik', Vinv, dV)
         PF = numpy.einsum('sij,sjk->ik', den_ao, fock_ao)
         de[k] += -2 * numpy.einsum('xij,ji->x', VinvdV, PF).real
+
+    if mf_grad.mol.symmetry:
+        de = mf_grad.symmetrize(grad_elec, atmlst)
+    if mf_grad.base.do_disp():
+        de += mf_grad.get_dispersion()
 
     return de
 
