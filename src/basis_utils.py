@@ -37,7 +37,6 @@ def match_fragment_basis(mf, match_indices):
         if int(bf.split()[0]) in match_indices:
             match_basis[match_indices.index(int(bf.split()[0]))].append(i)
     match_basis = [b for bs in match_basis for b in bs]
-    print(match_basis)
     if mf.istype('GHF') | mf.istype('GKS'):
         # Account for bb and ab/ba blocks of generalized density matrix
         match_basis = np.concatenate((match_basis, [ind + mf.mol.nao for ind in match_basis]))
