@@ -50,7 +50,7 @@ def get_noscf_orbitals(rt_ehrenfest):
         frag_indices = frag.match_indices
         frag_labels = [labels[i] for i in frag_indices]
         frag_pos = [pos[i] for i in frag_indices]
-        frag.reset(write_mol(basis, frag_labels, frag_pos, frag.mol.spin))
+        frag.reset(write_mol(basis, frag_labels, frag_pos, spin=frag.mol.spin, charge=frag.mol.charge))
         frag.verbose = 0
         frag.kernel()
         frag.match_indices = frag_indices

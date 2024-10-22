@@ -24,18 +24,19 @@ def print2molden(mf, filename=None, mo_coeff=None):
                                  spin = 'Beta')
 
 def match_fragment_atom(mf, frag):
-    match_indices = []
+    match_indices = [[] for i, _ in enumerate(frag.mol._atom)]
     for i, label in enumerate(mf.mol._atom):
         if label in frag.mol._atom:
-            match_indices.append(i)
+            match_indices[frag.mol._atom.index(label)].append(i)
+    match_indices = [i for idxs in match_indices for i in idxs]
     return match_indices
 
 def match_fragment_basis(mf, match_indices):
-    match_basis = []
+    match_basis = [[] for i, _ in enumerate(match_indices)]
     for i, bf in enumerate(mf.mol.ao_labels()):
         if int(bf.split()[0]) in match_indices:
-            match_basis.append(i)
-
+            match_basis[match_indices.index(int(bf.split()[0]))].append(i)
+    match_basis = [b for bs in match_basis for b in bs]
     if mf.istype('GHF') | mf.istype('GKS'):
         # Account for bb and ab/ba blocks of generalized density matrix
         match_basis = np.concatenate((match_basis, [ind + mf.mol.nao for ind in match_basis]))
@@ -58,8 +59,10 @@ def noscfbasis(mf, *fragments, reorder=True, orth=None):
         match_indices = match_fragment_atom(mf, frag)
         mask = mask_fragment_basis(mf, match_indices)
         noscf_orbitals[mask] = frag.mo_coeff
+    
     if reorder:
         # Reorder so that all occupied orbitals appear before virtual orbitals
+        # This may give the wrong order if you are projecting onto bizarre fragments, since the occupation of each fragment is used to reorder
         noscf_orbitals = reorder_noscf(noscf_orbitals, mf, *fragments)
     
     # Orthogonalize noscf orbitals (do this in orthogonal AO basis)
@@ -68,6 +71,7 @@ def noscfbasis(mf, *fragments, reorder=True, orth=None):
     noscf_orth = np.matmul(inv(orth), noscf_orbitals).astype(np.complex128)
     noscf_orth, _ = np.linalg.qr(noscf_orth, 'complete')
     return np.matmul(orth, noscf_orth)
+
 
 def reorder_noscf(noscf_orbitals, mf, *fragments):
     if len(np.shape(mf.mo_coeff)) == 3:
