@@ -1,8 +1,9 @@
 import numpy as np
 import rt_output
-from basis_utils import read_mol
+from basis_utils import read_mol, mask_fragment_basis
 from rt_utils import update_mo_coeff_print
 from pyscf import lib
+from pyscf.tools import cubegen
 
 '''
 Real-time Observable Functions
@@ -10,29 +11,33 @@ Real-time Observable Functions
 
 def _init_observables(rt_mf):
     rt_mf.observables = {
-        'energy'     : False,
-        'charge'     : False,
-        'dipole'     : False,
-        'quadrupole' : False,
-        'mag'        : False,
-        'mo_occ'     : False,
-        'nuclei'     : False,
-        'mo_coeff'   : False,
-        'den_ao'     : False,
-        'fock_ao'    : False,
+        'energy'       : False,
+        'charge'       : False,
+        'dipole'       : False,
+        'quadrupole'   : False,
+        'mag'          : False,
+        'mo_occ'       : False,
+        'atom_charges' : False,
+        'nuclei'       : False,
+        'cube_density' : False,
+        'mo_coeff'     : False,
+        'den_ao'       : False,
+        'fock_ao'      : False,
         }
 
     rt_mf._observables_functions = {
-        'energy'     : [get_energy, rt_output._print_energy],
-        'charge'     : [get_charge, rt_output._print_charge],
-        'dipole'     : [get_dipole, rt_output._print_dipole],
-        'quadrupole' : [get_quadrupole, rt_output._print_quadrupole],
-        'mag'        : [get_mag, rt_output._print_mag],
-        'mo_occ'     : [get_mo_occ, rt_output._print_mo_occ],
-        'nuclei'     : [get_nuclei, rt_output._print_nuclei],
-        'mo_coeff'   : [lambda *args: None, rt_output._print_mo_coeff],
-        'den_ao'     : [lambda *args: None, rt_output._print_den_ao],
-        'fock_ao'    : [lambda *args: None, rt_output._print_fock_ao],
+        'energy'       : [get_energy, rt_output._print_energy],
+        'charge'       : [get_charge, rt_output._print_charge],
+        'dipole'       : [get_dipole, rt_output._print_dipole],
+        'quadrupole'   : [get_quadrupole, rt_output._print_quadrupole],
+        'mag'          : [get_mag, rt_output._print_mag],
+        'mo_occ'       : [get_mo_occ, rt_output._print_mo_occ],
+        'atom_charges' : [get_atom_charges, rt_output._print_atom_charges],
+        'nuclei'       : [get_nuclei, rt_output._print_nuclei],
+        'cube_density' : [get_cube_density, lambda *args: None],
+        'mo_coeff'     : [lambda *args: None, rt_output._print_mo_coeff],
+        'den_ao'       : [lambda *args: None, rt_output._print_den_ao],
+        'fock_ao'      : [lambda *args: None, rt_output._print_fock_ao],
         }
 
 
@@ -123,6 +128,30 @@ def get_mag(rt_mf, den_ao):
         magz = np.sum((frag_den_ao[:Nsp, :Nsp] - frag_den_ao[Nsp:, Nsp:]) * frag_ovlp[:Nsp,:Nsp])
         rt_mf._mag.append([magx, magy, magz])
     
+def get_atom_charges(rt_mf, den_ao):
+    rt_mf._atom_charges = [[],[]]
+    if rt_mf.nmat == 2:
+        for i, label in enumerate(rt_mf._scf.mol._atom):
+            atom_mask = mask_fragment_basis(rt_mf._scf, [i])
+            rt_mf._atom_charges[0].append(label[0])
+            rt_mf._atom_charges[1].append(np.trace(np.sum(np.matmul(den_ao,rt_mf.ovlp)[atom_mask], axis=0)))
+    else:
+        for i, label in enumerate(rt_mf._scf.mol._atom):
+            atom_mask = mask_fragment_basis(rt_mf._scf, [i])
+            rt_mf._atom_charges[0].append(label[0])
+            rt_mf._atom_charges[1].append(np.trace(np.matmul(den_ao,rt_mf.ovlp)[atom_mask]))
 
 def get_nuclei(rt_mf, den_ao):
     rt_mf._nuclei = [rt_mf.nuc.labels, rt_mf.nuc.pos*lib.param.BOHR, rt_mf.nuc.vel*lib.param.BOHR, rt_mf.nuc.force]
+
+def get_cube_density(rt_mf, den_ao):
+    '''
+    Will create Gaussian cube file for molecule electron density 
+    for every propagation index given in rt_mf.cube_density_indices.
+    '''
+    if np.rint(rt_mf.current_time/rt_mf.timestep) in np.rint(np.array(rt_mf.cube_density_indices)/rt_mf.timestep):
+        if hasattr(rt_mf, 'cube_filename'):
+            cube_name = f'{rt_mf.cube_filename}{rt_mf.current_time}.cube'
+        else:
+            cube_name = f'{rt_mf.current_time}.cube'
+        cubegen.density(rt_mf._scf.mol, cube_name, den_ao)

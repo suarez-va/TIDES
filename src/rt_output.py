@@ -62,6 +62,14 @@ def _print_mag(rt_mf):
         for index, fragment in enumerate(mag[1:]):
             rt_mf._log.note(f'Fragment {index + 1} Magnetization [X, Y, Z] (AU): {" ".join(map(str,fragment))} \n')
 
+def _print_atom_charges(rt_mf):
+    label = rt_mf._atom_charges[0]
+    atom_charges = rt_mf._atom_charges[1]
+    rt_mf._log.note('Atomic Electronic Charges:')
+    for atom in zip(label, atom_charges):
+        rt_mf._log.note(f' {atom[0]} \t {np.real(atom[1])}')
+    rt_mf._log.note(' ')
+
 def _print_nuclei(rt_mf):
     nuclei = rt_mf._nuclei
     rt_mf._log.note(f'Nuclear Coordinates (Angstrom):')

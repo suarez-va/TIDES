@@ -45,7 +45,7 @@ noscf_orbitals = basis_utils.noscfbasis(dimer, water1, water2)
 
 rt_water = rt_scf.RT_SCF(dimer,1, 1500)
 # Declare which observables to be calculated/printed
-rt_water.observables.update(energy=True, mo_occ=True, charge=True)
+rt_water.observables.update(energy=True, mo_occ=True, charge=True, atom_charges=True)
 
 # Create object for complex absorbing potential and add to rt object
 CAP = MOCAP(0.5, 0.0477, 1.0, 10.0)
