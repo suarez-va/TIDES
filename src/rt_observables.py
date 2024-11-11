@@ -46,9 +46,16 @@ def _remove_suppressed_observables(rt_mf):
     if rt_mf.observables['mag']:
         assert rt_mf._scf.istype('GHF') | rt_mf._scf.istype('GKS')
 
+        
+    ### For whatever reason, the dip_moment call for GHF and GKS has arg name 'unit_symbol' instead of 'unit'
+    if rt_mf._scf.istype('GHF') | rt_mf._scf.istype('GKS'):
+        rt_mf._observables_functions['dipole'][0] = temp_get_dipole
+    
     for key, print_value in rt_mf.observables.items():
         if not print_value:
             del rt_mf._observables_functions[key]
+
+        
 
 def get_observables(rt_mf):
     if rt_mf.istype('RT_Ehrenfest') and 'mo_occ' in rt_mf.observables:
@@ -89,7 +96,14 @@ def get_dipole(rt_mf, den_ao):
     rt_mf._dipole.append(rt_mf._scf.dip_moment(mol=rt_mf._scf.mol, dm=rt_mf.den_ao,unit='A.U.', verbose=1))
     for frag in rt_mf.fragments:
         rt_mf._dipole.append(frag.dip_moment(mol=frag.mol, dm=den_ao[frag.mask], unit='A.U.', verbose=1))
-    
+
+def temp_get_dipole(rt_mf, den_ao):
+    # Temporary fix for argument name discrepancy in GHF.dip_moment ('unit_symbol' instead of 'unit')
+    rt_mf._dipole = []
+    rt_mf._dipole.append(rt_mf._scf.dip_moment(mol=rt_mf._scf.mol, dm=rt_mf.den_ao, unit_symbol='A.U.', verbose=1))
+    for frag in rt_mf.fragments:
+        rt_mf._dipole.append(frag.dip_moment(mol=frag.mol, dm=den_ao[frag.mask], unit_symbol='A.U.', verbose=1))
+
 def get_quadrupole(rt_mf, den_ao):
     rt_mf._quadrupole = []
     rt_mf._quadrupole.append(rt_mf._scf.quad_moment(mol=rt_mf._scf.mol, dm=rt_mf.den_ao,unit='A.U.', verbose=1))
@@ -147,7 +161,7 @@ def get_nuclei(rt_mf, den_ao):
 def get_cube_density(rt_mf, den_ao):
     '''
     Will create Gaussian cube file for molecule electron density 
-    for every propagation index given in rt_mf.cube_density_indices.
+    for every propagation time given in rt_mf.cube_density_indices.
     '''
     if np.rint(rt_mf.current_time/rt_mf.timestep) in np.rint(np.array(rt_mf.cube_density_indices)/rt_mf.timestep):
         if hasattr(rt_mf, 'cube_filename'):
