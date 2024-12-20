@@ -1,6 +1,7 @@
 import numpy as np
 import rt_output
 from basis_utils import read_mol, mask_fragment_basis
+from hirshfeld import hirshfeld_partition, get_weights
 from rt_utils import update_mo_coeff_print
 from pyscf import lib
 from pyscf.tools import cubegen
@@ -11,42 +12,52 @@ Real-time Observable Functions
 
 def _init_observables(rt_mf):
     rt_mf.observables = {
-        'energy'       : False,
-        'charge'       : False,
-        'dipole'       : False,
-        'quadrupole'   : False,
-        'mag'          : False,
-        'mo_occ'       : False,
-        'atom_charges' : False,
-        'nuclei'       : False,
-        'cube_density' : False,
-        'mo_coeff'     : False,
-        'den_ao'       : False,
-        'fock_ao'      : False,
+        'energy'            : False,
+        'charge'            : False,
+        'dipole'            : False,
+        'quadrupole'        : False,
+        'mag'               : False,
+        'hirshfeld_mags'    : False,
+        'hirshfeld_charges' : False,
+        'mo_occ'            : False,
+        'atom_charges'      : False,
+        'nuclei'            : False,
+        'cube_density'      : False,
+        'mo_coeff'          : False,
+        'den_ao'            : False,
+        'fock_ao'           : False,
         }
 
     rt_mf._observables_functions = {
-        'energy'       : [get_energy, rt_output._print_energy],
-        'charge'       : [get_charge, rt_output._print_charge],
-        'dipole'       : [get_dipole, rt_output._print_dipole],
-        'quadrupole'   : [get_quadrupole, rt_output._print_quadrupole],
-        'mag'          : [get_mag, rt_output._print_mag],
-        'mo_occ'       : [get_mo_occ, rt_output._print_mo_occ],
-        'atom_charges' : [get_atom_charges, rt_output._print_atom_charges],
-        'nuclei'       : [get_nuclei, rt_output._print_nuclei],
-        'cube_density' : [get_cube_density, lambda *args: None],
-        'mo_coeff'     : [lambda *args: None, rt_output._print_mo_coeff],
-        'den_ao'       : [lambda *args: None, rt_output._print_den_ao],
-        'fock_ao'      : [lambda *args: None, rt_output._print_fock_ao],
+        'energy'             : [get_energy, rt_output._print_energy],
+        'charge'             : [get_charge, rt_output._print_charge],
+        'dipole'             : [get_dipole, rt_output._print_dipole],
+        'quadrupole'         : [get_quadrupole, rt_output._print_quadrupole],
+        'mag'                : [get_mag, rt_output._print_mag],
+        'hirshfeld_mags'     : [get_hirshfeld_mags, rt_output._print_hirshfeld_mags],
+        'hirshfeld_charges'  : [get_hirshfeld_charges, rt_output._print_hirshfeld_charges],
+        'mo_occ'             : [get_mo_occ, rt_output._print_mo_occ],
+        'atom_charges'       : [get_atom_charges, rt_output._print_atom_charges],
+        'nuclei'             : [get_nuclei, rt_output._print_nuclei],
+        'cube_density'       : [get_cube_density, lambda *args: None],
+        'mo_coeff'           : [lambda *args: None, rt_output._print_mo_coeff],
+        'den_ao'             : [lambda *args: None, rt_output._print_den_ao],
+        'fock_ao'            : [lambda *args: None, rt_output._print_fock_ao],
         }
 
 
 
 def _remove_suppressed_observables(rt_mf):
-    if rt_mf.observables['mag']:
+    if rt_mf.observables['mag'] | rt_mf.observables['hirshfeld_mags']:
         assert rt_mf._scf.istype('GHF') | rt_mf._scf.istype('GKS')
 
-        
+    # Get atomic weights if using Hirshfeld Scheme
+    if rt_mf.observables['hirshfeld_mags'] | rt_mf.observables['hirshfeld_charges']:
+        rt_mf.hirshfeld = True
+        rt_mf.grids, rt_mf.atom_weights = get_weights(rt_mf._scf.mol)
+    else:
+        rt_mf.hirshfeld = False
+
     ### For whatever reason, the dip_moment call for GHF and GKS has arg name 'unit_symbol' instead of 'unit'
     if rt_mf._scf.istype('GHF') | rt_mf._scf.istype('GKS'):
         rt_mf._observables_functions['dipole'][0] = temp_get_dipole
@@ -58,8 +69,12 @@ def _remove_suppressed_observables(rt_mf):
         
 
 def get_observables(rt_mf):
-    if rt_mf.istype('RT_Ehrenfest') and 'mo_occ' in rt_mf.observables:
-        update_mo_coeff_print(rt_mf)
+    if rt_mf.istype('RT_Ehrenfest'):
+        if 'mo_occ' in rt_mf.observables:
+            update_mo_coeff_print(rt_mf)
+        if rt_mf.hirshfeld:
+            rt_mf.grids, rt_mf.atom_weights = get_weights(rt_mf._scf)
+
     for key, function in rt_mf._observables_functions.items():
           function[0](rt_mf, rt_mf.den_ao)
 
@@ -90,6 +105,16 @@ def get_charge(rt_mf, den_ao):
         for frag in rt_mf.fragments:
             rt_mf._charge.append(np.trace(np.matmul(den_ao,rt_mf.ovlp)[frag.mask]))
     
+def get_hirshfeld_charges(rt_mf, den_ao):
+    if rt_mf.nmat == 2:
+        rho_a, rho_b = hirshfeld_partition(rt_mf._scf, den_ao, rt_mf.grids, rt_mf.atom_weights)
+        rho = rho_a + rho_b
+    elif rt_mf._scf.istype('GHF') | rt_mf._scf.istype('GKS'):
+        rho_aa, rho_ab, rho_ba, rho_bb = hirshfeld_partition(rt_mf._scf, den_ao, rt_mf.grids, rt_mf.atom_weights)
+        rho = rho_aa + rho_bb
+    else:
+        rho = hirshfeld_partition(rt_mf._scf, den_ao, rt_mf.grids, rt_mf.atom_weights)
+    rt_mf._hirshfeld_charges = rho.sum(axis=1)
 
 def get_dipole(rt_mf, den_ao):
     rt_mf._dipole = []
@@ -141,19 +166,30 @@ def get_mag(rt_mf, den_ao):
         magy = 1j * np.sum((frag_den_ao[:Nsp, Nsp:] - frag_den_ao[Nsp:, :Nsp]) * frag_ovlp[:Nsp,:Nsp])
         magz = np.sum((frag_den_ao[:Nsp, :Nsp] - frag_den_ao[Nsp:, Nsp:]) * frag_ovlp[:Nsp,:Nsp])
         rt_mf._mag.append([magx, magy, magz])
-    
+
+def get_hirshfeld_mags(rt_mf, den_ao):
+    rho_aa, rho_ab, rho_ba, rho_bb = hirshfeld_partition(rt_mf._scf, den_ao, rt_mf.grids, rt_mf.atom_weights)
+    mx = (rho_ab + rho_ba)
+    my = 1j * (rho_ab - rho_ba)
+    mz = (rho_aa - rho_bb)
+
+    rt_mf._hirshfeld_mx_atoms = mx.sum(axis=1)
+    rt_mf._hirshfeld_my_atoms = my.sum(axis=1)
+    rt_mf._hirshfeld_mz_atoms = mz.sum(axis=1)
+    #rt_mf._hirshfeld_mx_atoms = [np.sum(mx * rt_mf.atom_weights[i]) for i in range(rt_mf._scf.mol.natm)]
+    #rt_mf._hirshfeld_my_atoms = [np.sum(my * rt_mf.atom_weights[i]) for i in range(rt_mf._scf.mol.natm)]
+    #rt_mf._hirshfeld_mz_atoms = [np.sum(mz * rt_mf.atom_weights[i]) for i in range(rt_mf._scf.mol.natm)]
+
 def get_atom_charges(rt_mf, den_ao):
-    rt_mf._atom_charges = [[],[]]
+    rt_mf._atom_charges = []
     if rt_mf.nmat == 2:
         for i, label in enumerate(rt_mf._scf.mol._atom):
             atom_mask = mask_fragment_basis(rt_mf._scf, [i])
-            rt_mf._atom_charges[0].append(label[0])
-            rt_mf._atom_charges[1].append(np.trace(np.sum(np.matmul(den_ao,rt_mf.ovlp)[atom_mask], axis=0)))
+            rt_mf._atom_charges.append(np.trace(np.sum(np.matmul(den_ao,rt_mf.ovlp)[atom_mask], axis=0)))
     else:
         for i, label in enumerate(rt_mf._scf.mol._atom):
             atom_mask = mask_fragment_basis(rt_mf._scf, [i])
-            rt_mf._atom_charges[0].append(label[0])
-            rt_mf._atom_charges[1].append(np.trace(np.matmul(den_ao,rt_mf.ovlp)[atom_mask]))
+            rt_mf._atom_charges.append(np.trace(np.matmul(den_ao,rt_mf.ovlp)[atom_mask]))
 
 def get_nuclei(rt_mf, den_ao):
     rt_mf._nuclei = [rt_mf.nuc.labels, rt_mf.nuc.pos*lib.param.BOHR, rt_mf.nuc.vel*lib.param.BOHR, rt_mf.nuc.force]
