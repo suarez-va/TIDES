@@ -1,3 +1,7 @@
+<div align="left">
+  <img src=images/sharp_i.jpg" height="80px"/>
+</div>
+
 # TIDES
 TIme-Dependent Electronic Structure code
 
