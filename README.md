@@ -1,5 +1,5 @@
 <div align="left">
-  <img src="https://github.com/jskretchmer/TIDES/images/sharp_i.jpg" height="80px"/>
+  <img src="images/sharp_i.jpg" height="80px"/>
 </div>
 
 # TIDES
