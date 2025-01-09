@@ -28,6 +28,10 @@ water2.atom = '''
  H                  -1.76001996   -0.36619300    0.76029121
 '''
 
+#dimer.basis='augccpvdz'
+#water1.basis='augccpvdz'
+#water2.basis='augccpvdz'
+
 dimer.build()
 water1.build()
 water2.build()
@@ -45,7 +49,7 @@ noscf_orbitals = basis_utils.noscfbasis(dimer, water1, water2)
 
 rt_water = rt_scf.RT_SCF(dimer,1, 1500)
 # Declare which observables to be calculated/printed
-rt_water.observables.update(energy=True, mo_occ=True, charge=True)
+rt_water.observables.update(energy=True, mo_occ=True, charge=True, atom_charges=True, hirshfeld_charges=True)
 
 # Create object for complex absorbing potential and add to rt object
 CAP = MOCAP(0.5, 0.0477, 1.0, 10.0)

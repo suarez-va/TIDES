@@ -27,6 +27,7 @@ class RT_SCF:
         self._potential = []
         self.fragments = []
 
+        self.labels = [self._scf.mol._atom[idx][0] for idx, _ in enumerate(self._scf.mol._atom)]
         if prop is None: prop = 'magnus_interpol'
         if orth is None: orth = scf.addons.canonical_orth_(self.ovlp)
         self.prop = prop

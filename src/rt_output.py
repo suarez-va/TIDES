@@ -41,6 +41,14 @@ def _print_charge(rt_mf):
         for index, fragment in enumerate(charge[1:]):
             rt_mf._log.note(f'Fragment {index + 1} Electronic Charge: {np.real(fragment)} \n')
 
+def _print_hirshfeld_charges(rt_mf):
+    labels = rt_mf.labels
+    atom_charges = rt_mf._hirshfeld_charges
+    rt_mf._log.note('Hirshfeld Atomic Electronic Charges:')
+    for atom in zip(labels, atom_charges):
+        rt_mf._log.note(f' {atom[0]} \t {np.real(atom[1])}')
+    rt_mf._log.note(' ')
+
 def _print_dipole(rt_mf):
     dipole = rt_mf._dipole
     rt_mf._log.note(f'Total Dipole Moment [X, Y, Z] (AU): {" ".join(map(str,dipole[0]))} \n')
@@ -61,6 +69,25 @@ def _print_mag(rt_mf):
     if len(mag) > 1:
         for index, fragment in enumerate(mag[1:]):
             rt_mf._log.note(f'Fragment {index + 1} Magnetization [X, Y, Z] (AU): {" ".join(map(str,fragment))} \n')
+
+def _print_hirshfeld_mags(rt_mf):
+    labels = rt_mf.labels
+    mx = rt_mf._hirshfeld_mx_atoms
+    my = rt_mf._hirshfeld_my_atoms
+    mz = rt_mf._hirshfeld_mz_atoms
+    m = np.transpose([mx, my, mz])
+    rt_mf._log.note(f'Hirshfeld Magnetization [X, Y, Z]: \n')
+    for atom in zip(labels, m):
+        rt_mf._log.note(f' {atom[0]}: {np.real(atom[1][0])} {np.real(atom[1][1])} {np.real(atom[1][2])}')
+    rt_mf._log.note(' ')
+
+def _print_atom_charges(rt_mf): 
+    labels = rt_mf.labels
+    atom_charges = rt_mf._atom_charges
+    rt_mf._log.note('Atomic Electronic Charges:')
+    for atom in zip(labels, atom_charges):
+        rt_mf._log.note(f' {atom[0]} \t {np.real(atom[1])}')
+    rt_mf._log.note(' ')
 
 def _print_nuclei(rt_mf):
     nuclei = rt_mf._nuclei
