@@ -87,9 +87,9 @@ class RT_Ehrenfest(RT_SCF):
         Omega = np.zeros(X.shape, dtype = complex)
         RdSX = np.zeros(X.shape)
         aoslices = mol.aoslice_by_atom()
-        for i in range(mol.natm):
-            p0, p1 = aoslices[i,2:]
-            RdSX += np.einsum('x,xij,ik->jk', Rdot[i], dS[:,p0:p1,:], X[p0:p1,:])
+        for idx in range(mol.natm):
+            p0, p1 = aoslices[idx,2:]
+            RdSX += np.einsum('x,xij,ik->jk', Rdot[idx], dS[:,p0:p1,:], X[p0:p1,:])
         Omega += np.matmul(RdSX, Xinv)
         return Omega
 

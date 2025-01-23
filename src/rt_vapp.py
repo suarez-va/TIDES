@@ -2,6 +2,7 @@ import numpy as np
 
 '''
 Real-time Time-Dependent Applied Potential (Sample Electric Field)
+Currently for restricted/unrestricted
 '''
 
 class ElectricField:

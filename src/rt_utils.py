@@ -23,11 +23,11 @@ def excite(rt_mf, excitation_alpha=None, excitation_beta=None):
 
 def input_fragments(rt_mf, *fragments):
     # Specify the relevant atom indices for each fragment
-    # The charge, energy, dipole, and magnetization on each fragment
-    # can be calculated
+    # The charge, energy, dipole, and magnetization on each fragment can be calculated
+    # Also useful for MO occ projections onto fragment MOs
 
     nmo = rt_mf._scf.mol.nao_nr()
-    for index, frag in enumerate(fragments):
+    for idx, frag in enumerate(fragments):
         match_indices = match_fragment_atom(rt_mf._scf, frag)
         mask_basis = mask_fragment_basis(rt_mf._scf, match_indices)
         frag.match_indices = match_indices
@@ -64,9 +64,9 @@ def restart_from_chkfile(rt_mf):
         if rt_mf.nmat == 1:
             rt_mf._scf.mo_coeff = np.loadtxt(chk_lines[2:], dtype=np.complex128)
         else:
-            for i, line in enumerate(chk_lines):
+            for idx, line in enumerate(chk_lines):
                 if 'Beta' in line:
-                    b0 = i
+                    b0 = idx
                     break
 
             mo_alpha0 = np.loadtxt(chk_lines[3:b0], dtype=np.complex128)

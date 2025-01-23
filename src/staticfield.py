@@ -5,6 +5,9 @@ SCF Time-Independent Applied Potential
 '''
 
 def static_bfield(mf, bfield):
+    '''
+    Since hcore is time-independent for frozen nuclei, this function calculates a modified hcore in the presence of a static B-field, and overrides the get_hcore() func to return     this modified hcore.
+    '''
     x_bfield = bfield[0]
     y_bfield = bfield[1]
     z_bfield = bfield[2]
