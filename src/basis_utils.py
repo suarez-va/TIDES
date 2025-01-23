@@ -24,22 +24,22 @@ def print2molden(mf, filename=None, mo_coeff=None):
                                  spin = 'Beta')
 
 def match_fragment_atom(mf, frag):
-    match_indices = [[] for i, _ in enumerate(frag.mol._atom)]
-    for i, label in enumerate(mf.mol._atom):
+    match_indices = [[] for idx, _ in enumerate(frag.mol._atom)]
+    for idx, label in enumerate(mf.mol._atom):
         if label in frag.mol._atom:
-            match_indices[frag.mol._atom.index(label)].append(i)
-    match_indices = [i for idxs in match_indices for i in idxs]
+            match_indices[frag.mol._atom.index(label)].append(idx)
+    match_indices = [idx for idxs in match_indices for idx in idxs]
     return match_indices
 
 def match_fragment_basis(mf, match_indices):
-    match_basis = [[] for i, _ in enumerate(match_indices)]
-    for i, bf in enumerate(mf.mol.ao_labels()):
+    match_basis = [[] for idx, _ in enumerate(match_indices)]
+    for idx, bf in enumerate(mf.mol.ao_labels()):
         if int(bf.split()[0]) in match_indices:
-            match_basis[match_indices.index(int(bf.split()[0]))].append(i)
+            match_basis[match_indices.index(int(bf.split()[0]))].append(idx)
     match_basis = [b for bs in match_basis for b in bs]
     if mf.istype('GHF') | mf.istype('GKS'):
         # Account for bb and ab/ba blocks of generalized density matrix
-        match_basis = np.concatenate((match_basis, [ind + mf.mol.nao for ind in match_basis]))
+        match_basis = np.concatenate((match_basis, [idx + mf.mol.nao for idx in match_basis]))
     
     return tuple(match_basis)
     
@@ -108,25 +108,25 @@ def reorder_noscf(noscf_orbitals, mf, *fragments):
 def occ_sort(occ_list):
     nocc = []
     nvirt = []
-    for i, occ in enumerate(occ_list):
+    for idx, occ in enumerate(occ_list):
         if occ > 0:
-            nocc.append(i)
+            nocc.append(idx)
         else:
-            nvirt.append(i)
+            nvirt.append(idx)
     return tuple(nocc + nvirt)
 
 def read_mol(mol):
     _atom = mol._atom
     basis = mol.basis
-    labels = [_atom[i][0] for i in range(len(_atom))]
-    pos = [mol._atom[i][1] for i in range(len(_atom))]
+    labels = [_atom[idx][0] for idx in range(len(_atom))]
+    pos = [mol._atom[idx][1] for idx in range(len(_atom))]
     return basis, labels, pos
  
-def write_mol(basis, labels, pos, spin=0, charge=0):
+def write_mol(basis, labels, pos, spin=0, charge=0, unit='Bohr'):
     atom_str = '\n '
-    for index, R in enumerate(pos):
-        atom_str += '\t'.join([labels[index], str(R[0]), str(R[1]), str(R[2])]) + '\n '
-    mol = gto.Mole(atom=atom_str, unit='Bohr', spin=spin, charge=charge)
+    for idx, R in enumerate(pos):
+        atom_str += '\t'.join([labels[idx], str(R[0]), str(R[1]), str(R[2])]) + '\n '
+    mol = gto.Mole(atom=atom_str, unit=unit, spin=spin, charge=charge)
     mol.basis = basis
     mol.build(verbose=0)
     return mol

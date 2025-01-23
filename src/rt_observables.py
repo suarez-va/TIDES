@@ -47,7 +47,7 @@ def _init_observables(rt_mf):
 
 
 
-def _remove_suppressed_observables(rt_mf):
+def _check_observables(rt_mf):
     if rt_mf.observables['mag'] | rt_mf.observables['hirshfeld_mags']:
         assert rt_mf._scf.istype('GHF') | rt_mf._scf.istype('GKS')
 
@@ -73,7 +73,7 @@ def get_observables(rt_mf):
         if 'mo_occ' in rt_mf.observables:
             update_mo_coeff_print(rt_mf)
         if rt_mf.hirshfeld:
-            rt_mf.grids, rt_mf.atom_weights = get_weights(rt_mf._scf)
+            rt_mf.grids, rt_mf.atom_weights = get_weights(rt_mf._scf.mol)
 
     for key, function in rt_mf._observables_functions.items():
           function[0](rt_mf, rt_mf.den_ao)
@@ -118,7 +118,7 @@ def get_hirshfeld_charges(rt_mf, den_ao):
 
 def get_dipole(rt_mf, den_ao):
     rt_mf._dipole = []
-    rt_mf._dipole.append(rt_mf._scf.dip_moment(mol=rt_mf._scf.mol, dm=rt_mf.den_ao,unit='A.U.', verbose=1))
+    rt_mf._dipole.append(rt_mf._scf.dip_moment(mol=rt_mf._scf.mol, dm=rt_mf.den_ao, unit='A.U.', verbose=1))
     for frag in rt_mf.fragments:
         rt_mf._dipole.append(frag.dip_moment(mol=frag.mol, dm=den_ao[frag.mask], unit='A.U.', verbose=1))
 
@@ -176,19 +176,16 @@ def get_hirshfeld_mags(rt_mf, den_ao):
     rt_mf._hirshfeld_mx_atoms = mx.sum(axis=1)
     rt_mf._hirshfeld_my_atoms = my.sum(axis=1)
     rt_mf._hirshfeld_mz_atoms = mz.sum(axis=1)
-    #rt_mf._hirshfeld_mx_atoms = [np.sum(mx * rt_mf.atom_weights[i]) for i in range(rt_mf._scf.mol.natm)]
-    #rt_mf._hirshfeld_my_atoms = [np.sum(my * rt_mf.atom_weights[i]) for i in range(rt_mf._scf.mol.natm)]
-    #rt_mf._hirshfeld_mz_atoms = [np.sum(mz * rt_mf.atom_weights[i]) for i in range(rt_mf._scf.mol.natm)]
 
 def get_atom_charges(rt_mf, den_ao):
     rt_mf._atom_charges = []
     if rt_mf.nmat == 2:
-        for i, label in enumerate(rt_mf._scf.mol._atom):
-            atom_mask = mask_fragment_basis(rt_mf._scf, [i])
+        for idx, label in enumerate(rt_mf._scf.mol._atom):
+            atom_mask = mask_fragment_basis(rt_mf._scf, [idx])
             rt_mf._atom_charges.append(np.trace(np.sum(np.matmul(den_ao,rt_mf.ovlp)[atom_mask], axis=0)))
     else:
-        for i, label in enumerate(rt_mf._scf.mol._atom):
-            atom_mask = mask_fragment_basis(rt_mf._scf, [i])
+        for idx, label in enumerate(rt_mf._scf.mol._atom):
+            atom_mask = mask_fragment_basis(rt_mf._scf, [idx])
             rt_mf._atom_charges.append(np.trace(np.matmul(den_ao,rt_mf.ovlp)[atom_mask]))
 
 def get_nuclei(rt_mf, den_ao):

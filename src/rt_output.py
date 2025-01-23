@@ -76,7 +76,7 @@ def _print_hirshfeld_mags(rt_mf):
     my = rt_mf._hirshfeld_my_atoms
     mz = rt_mf._hirshfeld_mz_atoms
     m = np.transpose([mx, my, mz])
-    rt_mf._log.note(f'Hirshfeld Magnetization [X, Y, Z]: \n')
+    rt_mf._log.note(f'Hirshfeld Magnetization [X, Y, Z]:')
     for atom in zip(labels, m):
         rt_mf._log.note(f' {atom[0]}: {np.real(atom[1][0])} {np.real(atom[1][1])} {np.real(atom[1][2])}')
     rt_mf._log.note(' ')

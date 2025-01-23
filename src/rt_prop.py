@@ -10,7 +10,7 @@ Real-time Propagation
 
 def propagate(rt_mf, mo_coeff_print):
     print_info(rt_mf, mo_coeff_print)
-    rt_observables._remove_suppressed_observables(rt_mf)
+    rt_observables._check_observables(rt_mf)
 
     rt_mf._integrate_function = rt_integrators.get_integrator(rt_mf)
     rt_mf._fock_orth = rt_mf.get_fock_orth(rt_mf.den_ao)
