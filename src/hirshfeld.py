@@ -46,6 +46,7 @@ def get_weights(mol):
     grids = dft.Grids(mol)
     grids.build()
     mf = dft.RKS(mol)
+    mf.verbose = 0
     mf.xc = 'HF'
     mf.grids = grids
     mf.kernel()

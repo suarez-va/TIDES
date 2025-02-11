@@ -88,7 +88,8 @@ def print_info(rt_mf, mo_coeff_print):
     rt_mf._log.note(f'{"=" * 25} \nBeginning Propagation For: \n')
     mf_type = type(rt_mf._scf).__name__
     rt_mf._log.note(f'\t Object Type: {mf_type}')
-    rt_mf._log.note(f'\t Basis Set: {rt_mf._scf.mol.basis}\n')
+    rt_mf._log.note(f'\t Basis Set: {rt_mf._scf.mol.basis}')
+    rt_mf._log.note(f'\t Mol Length: {len(rt_mf._scf.mol._atom)}\n')
     if hasattr(rt_mf._scf, 'xc'):
         rt_mf._log.note(f'\t Exchange-Correlation Functional: {rt_mf._scf.xc}')
     if hasattr(rt_mf._scf, 'nlc') and rt_mf._scf.nlc != '':
