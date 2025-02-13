@@ -1,8 +1,8 @@
 import numpy as np
-from basis_utils import match_fragment_atom, mask_fragment_basis, noscfbasis, read_mol, write_mol
-import ehrenfest_force
 from pyscf import scf
-from rt_nuclei import NUC
+from tides.basis_utils import match_fragment_atom, mask_fragment_basis, noscfbasis, read_mol, write_mol
+from tides import ehrenfest_force
+from tides.rt_nuclei import NUC
 
 '''
 Real-time Utilities

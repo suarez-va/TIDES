@@ -1,9 +1,9 @@
 from pyscf import gto, dft, scf
 import numpy as np
-import rt_scf
-import rt_utils
-import basis_utils
-from rt_cap import MOCAP
+from tides import rt_scf
+from tides import rt_utils
+from tides import basis_utils
+from tides.rt_cap import MOCAP
 
 dimer = gto.Mole()
 water1 = gto.Mole()
@@ -27,10 +27,6 @@ water2.atom = '''
  H                  -1.76001996   -0.36619300   -0.76029109
  H                  -1.76001996   -0.36619300    0.76029121
 '''
-
-#dimer.basis='augccpvdz'
-#water1.basis='augccpvdz'
-#water2.basis='augccpvdz'
 
 dimer.build()
 water1.build()

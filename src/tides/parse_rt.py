@@ -11,25 +11,24 @@ def parse_output(filename):
         if 'Mol Length: ' in line:
             mol_length = int(line.split()[2])
             break
-    
+
     time = []
     energy = []
     kinetic_energy = []
     dipole = []
-    mo_occ = []
-    charge = []
+    quadrupole = []
+    mulliken_charge = []
+    mulliken_atom_charge = []
+    hirsh_atom_charge = []
     mag = []
-    atom_mag = []
-    hirsh_mag = []
-    mol_length = mol_length
-    atom_charges = []
-    hirsh_charges = []
+    hirsh_atom_mag = []
+    mo_occ = []
     coords = []
     vels = []
-    frag_charges = []
+    frag_charge = []
     alpha_energies = []
     beta_energies = []
-    quadrupole = []
+    
     for idx, line in enumerate(lines):
         if 'Current Time' in line:
             time.append(get_time(line))
@@ -44,20 +43,20 @@ def parse_output(filename):
         if 'Molecular Orbital Occupations' in line:
             mo_occ.append(get_mo_occ(line))
         if 'Total Electronic Charge' in line:
-            charge.append(get_charge(line))
+            mulliken_charge.append(get_charge(line))
         if 'Fragment' in line and 'Electronic Charge' in line:
-            frag_charges.append(get_frag_charge(line))
-        if 'Atomic Electronic Charges:' in line and 'Hirshfeld' not in line:
-            atom_charges.append(get_atom_charges(lines[idx+1:idx+mol_length+1]))
-        if 'Hirshfeld Atomic Electronic Charges:' in line:
-            hirsh_charges.append(get_atom_charges(lines[idx+1:idx+mol_length+1]))
-        if 'Total Magnetization: ' in line:
+            frag_charge.append(get_frag_charge(line))
+        if 'Atomic Electronic Charges' in line and 'Hirshfeld' not in line:
+            mulliken_atom_charge.append(get_atom_charge(lines[idx+1:idx+mol_length+1]))
+        if 'Hirshfeld Atomic Electronic Charges' in line:
+            hirsh_atom_charge.append(get_atom_charge(lines[idx+1:idx+mol_length+1]))
+        if 'Total Magnetization' in line:
             mag.append(get_mag(line))
-        if 'Hirshfeld Magnetization: ' in line:
-            hirsh_mag.append(get_atom_mag(lines[idx+1:idx+mol_length+1]))
-        if 'Nuclear Coordinates: ' in line:
+        if 'Hirshfeld Magnetization' in line:
+            hirsh_atom_mag.append(get_atom_mag(lines[idx+1:idx+mol_length+1]))
+        if 'Nuclear Coordinates' in line:
             coords.append(get_coords(lines[idx+1:idx+mol_length+1]))
-        if 'Nuclear Velocities: ' in line:
+        if 'Nuclear Velocities' in line:
             vels.append(get_vels(lines[idx+1:idx+mol_length+1]))
         if 'Molecular Orbital Energies (Alpha): ' in line:
             alpha_energies.append(get_mo_energy(line))
@@ -69,16 +68,15 @@ def parse_output(filename):
     kinetic_energy = np.array(kinetic_energy)
     dipole = np.array(dipole)
     quadrupole = np.array(quadrupole)
-    mo_occ = np.array(mo_occ)
-    charge = np.array(charge)
-    atom_charges = np.array(atom_charges)
-    hirsh_charges = np.array(hirsh_charges)
+    mulliken_charge = np.array(mulliken_charge)
+    mulliken_atom_charge = np.array(mulliken_atom_charge)
+    hirsh_atom_charge = np.array(hirsh_atom_charge)
     mag = np.array(mag)
-    atom_mag = np.array(atom_mag)
-    hirsh_mag = np.array(hirsh_mag)
+    hirsh_atom_mag = np.array(hirsh_atom_mag)
+    mo_occ = np.array(mo_occ)
     coords = np.array(coords)
     vels = np.array(vels)
-    frag_charges = np.array(frag_charges).reshape([len(time), int(np.size(frag_charges) / len(time))])
+    frag_charge = np.array(frag_charge).reshape([len(time), int(np.size(frag_charge) / len(time))])
     alpha_energies = np.array(alpha_energies)
     beta_energies = np.array(beta_energies)
     result = {
@@ -86,16 +84,17 @@ def parse_output(filename):
     'energy': energy,
     'kinetic_energy': kinetic_energy,
     'dipole': dipole,
-    'mo_occ': mo_occ,
-    'charge': charge,
-    'hirsh_charges': hirsh_charges,
-    'mag': mag,
-    'hirsh_mag': hirsh_mag,
-    'coords': coords,
-    'atom_charges': atom_charges,
-    'vels': vels,
-    'frag_charges': frag_charges,
     'quadrupole': quadrupole,
+    'charge': mulliken_charge,
+    'mulliken_charge': mulliken_charge,
+    'mulliken_atom_charge': mulliken_atom_charge,
+    'hirsh_atom_charge': hirsh_atom_charge,
+    'mag': mag,
+    'hirsh_atom_mag': hirsh_atom_mag,
+    'mo_occ': mo_occ,
+    'coords': coords,
+    'vels': vels,
+    'frag_charge': frag_charge,
     'alpha_energies': alpha_energies,
     'beta_energies': beta_energies,
     }
@@ -130,15 +129,6 @@ def get_mag(line):
     z = float(line.split()[-1])
     return [x, y, z]
 
-def get_atom_mag(lines):
-    mag = []
-    for line in lines:
-        x = float(line.split()[-3])
-        y = float(line.split()[-2])
-        z = float(line.split()[-1])
-        mag.append([x, y, z])
-    return mag
-
 def get_mo_occ(line):
     return np.array(line.split('Molecular Orbital Occupations: ')[1].split()).astype(np.float64)
 
@@ -160,7 +150,7 @@ def get_coords(lines):
         coords.append(atom_coords)
     return coords
 
-def get_atom_charges(lines):
+def get_atom_charge(lines):
     charges = []
     for line in lines:
         charges.append(float(line.split()[1]))

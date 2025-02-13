@@ -1,9 +1,9 @@
 import numpy as np
 from pyscf import gto, dft, scf, grad
-import ehrenfest_force
-from rt_scf import RT_SCF
-from rt_nuclei import NUC
-from rt_utils import _sym_orth, get_scf_orbitals
+from tides import ehrenfest_force
+from tides.rt_scf import RT_SCF
+from tides.rt_nuclei import NUC
+from tides.rt_utils import _sym_orth, get_scf_orbitals
 
 '''
 Real-time SCF + Ehrenfest

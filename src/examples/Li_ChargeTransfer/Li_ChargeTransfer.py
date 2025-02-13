@@ -1,8 +1,7 @@
 from pyscf import gto, scf, dft
-import numpy as np
-import rt_scf
-import rt_utils
-import basis_utils
+from tides import rt_scf
+from tides import rt_utils
+from tides import basis_utils
 
 dimer = gto.Mole()
 Li1 = gto.Mole()
@@ -21,9 +20,9 @@ Li2.atom = '''
 Li 0.0 0.0 5.0
 '''
 
-dimer.basis = 'aug-cc-pvqz'
-Li1.basis = 'aug-cc-pvqz'
-Li2.basis = 'aug-cc-pvqz'
+dimer.basis = '6-31G*'
+Li1.basis = '6-31G*'
+Li2.basis = '6-31G*'
 
 dimer.charge = +1
 dimer.spin = 1
@@ -46,8 +45,8 @@ Li1.kernel()
 Li2.kernel()
 
 dimer.mo_coeff = basis_utils.noscfbasis(dimer,Li1,Li2)
-rt_mf = rt_scf.RT_SCF(dimer,1, 200)
-rt_mf.observables.update(charge=True)
-rt_utils.input_fragments(rt_mf, Li1, Li2)
+rt_mf = rt_scf.RT_SCF(dimer,0.05, 500)
+rt_mf.prop = 'rk4' # No good reason to use rk4, but it works with small timesteps.
+rt_mf.observables.update(mulliken_atom_charge=True, hirsh_atom_charge=True)
 
 rt_mf.kernel()

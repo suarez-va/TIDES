@@ -41,7 +41,7 @@ def _print_charge(rt_mf):
         for index, fragment in enumerate(charge[1:]):
             rt_mf._log.note(f'Fragment {index + 1} Electronic Charge: {np.real(fragment)} \n')
 
-def _print_hirshfeld_charges(rt_mf):
+def _print_hirshfeld_charge(rt_mf):
     labels = rt_mf.labels
     atom_charges = rt_mf._hirshfeld_charges
     rt_mf._log.note('Hirshfeld Atomic Electronic Charges:')
@@ -66,11 +66,8 @@ def _print_quadrupole(rt_mf):
 def _print_mag(rt_mf):
     mag = rt_mf._mag
     rt_mf._log.note(f'Total Magnetization [X, Y, Z]: {" ".join(map(str,np.real(mag[0])))} \n')
-    if len(mag) > 1:
-        for index, fragment in enumerate(mag[1:]):
-            rt_mf._log.note(f'Fragment {index + 1} Magnetization [X, Y, Z] (AU): {" ".join(map(str,fragment))} \n')
 
-def _print_hirshfeld_mags(rt_mf):
+def _print_hirshfeld_mag(rt_mf):
     labels = rt_mf.labels
     mx = rt_mf._hirshfeld_mx_atoms
     my = rt_mf._hirshfeld_my_atoms
@@ -81,7 +78,7 @@ def _print_hirshfeld_mags(rt_mf):
         rt_mf._log.note(f' {atom[0]}: {np.real(atom[1][0])} {np.real(atom[1][1])} {np.real(atom[1][2])}')
     rt_mf._log.note(' ')
 
-def _print_atom_charges(rt_mf): 
+def _print_atom_charge(rt_mf):
     labels = rt_mf.labels
     atom_charges = rt_mf._atom_charges
     rt_mf._log.note('Atomic Electronic Charges:')
@@ -111,4 +108,4 @@ def _print_den_ao(rt_mf):
     rt_mf._log.note(f'\n{"@"*25} Density Matrix (AO Basis): {"@"*25}\n {rt_mf.den_ao} \n{"@"*50}\n')
 
 def _print_fock_ao(rt_mf):
-    rt_mf._log.note(f'\n{"+"*25} Fock Matrix (AO Basis): {"+"*25}\n {rt_mf.fock_ao} \n{"+"*50}\n') 
+    rt_mf._log.note(f'\n{"+"*25} Fock Matrix (AO Basis): {"+"*25}\n {rt_mf.fock_ao} \n{"+"*50}\n')

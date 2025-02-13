@@ -1,8 +1,14 @@
+import sys
 import numpy as np
 from pyscf import gto, scf, dft, data
 from pyscf.scf.atom_ks import get_atm_nrks
 from pyscf.dft import numint
-from pyscf.hirshfeld import HirshfeldAnalysis
+
+try:
+    # pip install git+https://github.com/frobnitzem/hirshfeld
+    from pyscf.hirshfeld import HirshfeldAnalysis
+except ImportError:
+    sys.stderr.write('Note: Hirshfeld module not installed. Install with [pip install git+https://github.com/frobnitzem/hirshfeld] if you wish to collect hirshfeld observables.')
 
 def hirshfeld_partition(mf, den_ao, grids=None, atom_weights=None):
     if grids is None or atom_weights is None: grids, atom_weights = get_weights(mf.mol)
