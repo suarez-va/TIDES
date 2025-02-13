@@ -1,8 +1,8 @@
 import numpy as np
-import rt_integrators
-import rt_observables
-import rt_output
-from rt_utils import update_chkfile, print_info
+from tides import rt_integrators
+from tides import rt_observables
+from tides import rt_output
+from tides.rt_utils import update_chkfile, print_info
 
 '''
 Real-time Propagation

@@ -1,8 +1,8 @@
 import numpy as np
-from basis_utils import match_fragment_atom, mask_fragment_basis, noscfbasis, read_mol, write_mol
-import ehrenfest_force
 from pyscf import scf
-from rt_nuclei import NUC
+from tides.basis_utils import match_fragment_atom, mask_fragment_basis, noscfbasis, read_mol, write_mol
+from tides import ehrenfest_force
+from tides.rt_nuclei import NUC
 
 '''
 Real-time Utilities
@@ -88,7 +88,8 @@ def print_info(rt_mf, mo_coeff_print):
     rt_mf._log.note(f'{"=" * 25} \nBeginning Propagation For: \n')
     mf_type = type(rt_mf._scf).__name__
     rt_mf._log.note(f'\t Object Type: {mf_type}')
-    rt_mf._log.note(f'\t Basis Set: {rt_mf._scf.mol.basis}\n')
+    rt_mf._log.note(f'\t Basis Set: {rt_mf._scf.mol.basis}')
+    rt_mf._log.note(f'\t Mol Length: {len(rt_mf._scf.mol._atom)}\n')
     if hasattr(rt_mf._scf, 'xc'):
         rt_mf._log.note(f'\t Exchange-Correlation Functional: {rt_mf._scf.xc}')
     if hasattr(rt_mf._scf, 'nlc') and rt_mf._scf.nlc != '':

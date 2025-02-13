@@ -4,6 +4,8 @@ import rt_scf
 import rt_utils
 import basis_utils
 from rt_cap import MOCAP
+import cProfile
+import pstats
 
 dimer = gto.Mole()
 water1 = gto.Mole()
@@ -47,9 +49,9 @@ water2.kernel()
 # Calculate noscf basis to print orbital occupations in
 noscf_orbitals = basis_utils.noscfbasis(dimer, water1, water2)
 
-rt_water = rt_scf.RT_SCF(dimer,1, 1500)
+rt_water = rt_scf.RT_SCF(dimer,1, 100)
 # Declare which observables to be calculated/printed
-rt_water.observables.update(energy=True, mo_occ=True, charge=True, atom_charges=True, hirshfeld_charges=True)
+rt_water.observables.update(energy=True, mo_occ=True, charge=True, atom_charges=True)#, hirshfeld_charges=True) <- Hirshfeld charges slow down calculation a lot
 
 # Create object for complex absorbing potential and add to rt object
 CAP = MOCAP(0.5, 0.0477, 1.0, 10.0)
@@ -60,4 +62,13 @@ rt_utils.excite(rt_water, 4)
 rt_utils.input_fragments(rt_water, water1, water2)
 
 # Start calculation, send in noscf_orbitals to print
-rt_water.kernel(mo_coeff_print=noscf_orbitals)
+### start propagation
+with cProfile.Profile() as pr:
+    rt_water.kernel(mo_coeff_print=noscf_orbitals)
+
+stats = pstats.Stats(pr)
+stats.sort_stats(pstats.SortKey.TIME)
+stats.print_stats()
+
+
+

@@ -4,12 +4,6 @@ import rt_scf
 import rt_vapp
 from rt_vapp import ElectricField
 
-############################
-# CURRENTLY DOESNT WORK    #
-# PYSCF HAS BUG WITH       #
-# dip_moment() for GHF+X2C #
-############################
-
 mag_z = 0.000085 # in au
 
 mol = gto.M(
@@ -20,9 +14,8 @@ mol = gto.M(
 
 mf = scf.ghf.GHF(mol).x2c()
 mf.kernel()
-print(mf.mo_energy)
 
-class deltaField:
+class x2cDeltaField:
     def __init__(self, rt_mf, amplitude, center=0):
 
         self.amplitude = np.array(amplitude)
@@ -49,7 +42,7 @@ class deltaField:
 rt_mf = rt_scf.RT_SCF(mf, 20, 200000)
 rt_mf.observables.update(mag=True, energy=True, mo_occ=True, dipole=True, charge=True)
 
-delta_field = deltaField(rt_mf, [0.0001, 0.0001, 0.0001])
+delta_field = x2cDeltaField(rt_mf, [0.0001, 0.0000, 0.0000])
 
 rt_mf.add_potential(delta_field)
 

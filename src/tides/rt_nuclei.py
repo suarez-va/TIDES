@@ -1,6 +1,6 @@
 import numpy as np
 from pyscf import gto, dft, scf
-from basis_utils import read_mol, write_mol
+from tides.basis_utils import read_mol, write_mol
 
 '''
 Nuclear Object for Real-Time Ehrenfest

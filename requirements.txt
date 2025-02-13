@@ -1,0 +1,4 @@
+pyscf[all]
+numpy
+scipy
+matplotlib

@@ -8,7 +8,7 @@ Real-time SCF Spectra
 '''
 
 c = lib.param.LIGHT_SPEED
-def abs_spec(time, pole, filename, kick_str=1, pad=None, damp=None, hann_damp=None, preprocess_zero=True):
+def abs_spec(time, pole, kick_str=1, pad=None, damp=None, hann_damp=None, preprocess_zero=True):
     '''
     Performs 1D Fourier Transform on time-dependent multipole moment.
     Adapted from NWChem's fft1d.m GNU Octave script (Kenneth Lopata), which can be found at https://nwchemgit.github.io/RT-TDDFT.html#absorption-spectrum-of-water
@@ -51,5 +51,4 @@ def abs_spec(time, pole, filename, kick_str=1, pad=None, damp=None, hann_damp=No
         osc_str.append(np.abs(np.imag(pole_f[:m])) * (4 * np.pi) / (c * kick_str) * w)
 
     osc_str = np.array(osc_str).T
-    abs_vs_freq = np.column_stack([w,osc_str])
-    np.savetxt(filename + '.txt', abs_vs_freq)
+    return w, osc_str
