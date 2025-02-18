@@ -68,15 +68,26 @@ Change integrator by adjusting the rt_scf.prop attribute. The default integrator
 - Interpolated Magnus - 'magnus_interpol'
 
 ## Observables
-All the below observables, unless otherwise stated, will print for verbose > 2
-- MO occupations - 'mo_occ'
+All observables must be declared to be printed. To declare an observable, update the observables dictionary attribute of the RT_SCF object to be True for the dictionary keys corresponding to any desired observables.
+
+```
+rt_scf.observables['energy'] = True # Energy will be printed
+
+rt_scf.observables.update(energy=True, dipole=True) # Energy and Dipole will be printed
+```
+
+
+All the below observables, unless otherwise stated, will print for verbose > 2 if rt_scf.observables[key] is set to True.
+
 - Energy - 'energy'
 - Dipole - 'dipole'
-- Charge - 'charge'
+- Quadrupole - 'quadrupole'
+- Electronic Charge - 'charge'
+- Mulliken Charge - 'atom_charge' or 'mulliken_charge' or 'mulliken_atom_charge'
+- Hirshfeld Charge - 'hirsh_charge' or 'hirsh_atom_charge'
 - Magnetization - 'mag'
-- Mulliken Charges - 'atom_charges'
-- Hirshfeld Charges - 'hirshfeld_charges'
-- Hirshfeld Magnetization - 'hirshfeld_mags'
+- Hirshfeld Magnetization - 'hirsh_mag' or 'hirsh_atom_mag'
+- MO occupations - 'mo_occ'
 - Nuclei (For Ehrenfest) - 'nuclei'
   - Positions
   - Velocities - verbose > 3
@@ -453,10 +464,4 @@ In progress
 
 
 ## Adding Custom Observables
-In progress
-
-
-## Code Structure
-(See src for full code and accompanying function documentation)
-
 In progress

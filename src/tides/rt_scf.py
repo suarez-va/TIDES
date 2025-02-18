@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.linalg import inv
-from pyscf import gto, dft, scf
+from pyscf import gto
+from pyscf.scf import addons
 from pyscf.lib import logger
 from tides.rt_prop import propagate
 from tides import rt_observables
@@ -14,12 +15,12 @@ Real-time SCF Class
 '''
 
 class RT_SCF:
-    def __init__(self, mf, timestep, max_time, filename=None, prop=None, frequency=1, orth=None, chkfile=None, verbose=3):
+    def __init__(self, scf, timestep, max_time, filename=None, prop=None, frequency=1, orth=None, chkfile=None, verbose=3):
 
         self.timestep = timestep
         self.frequency = frequency
         self.max_time = max_time
-        self._scf = mf
+        self._scf = scf
         self.ovlp = self._scf.get_ovlp()
         self.occ = self._scf.get_occ()
 
@@ -29,7 +30,7 @@ class RT_SCF:
 
         self.labels = [self._scf.mol._atom[idx][0] for idx, _ in enumerate(self._scf.mol._atom)]
         if prop is None: prop = 'magnus_interpol'
-        if orth is None: orth = scf.addons.canonical_orth_(self.ovlp)
+        if orth is None: orth = addons.canonical_orth_(self.ovlp)
         self.prop = prop
         
         self.orth = orth
@@ -67,7 +68,7 @@ class RT_SCF:
 
     def get_fock_orth(self, den_ao):
         self.fock_ao = self._scf.get_fock(dm=den_ao).astype(np.complex128)
-        if self._potential: self.applypotential()
+        if self._potential: self.apply_potential()
         return np.matmul(self.orth.T, np.matmul(self.fock_ao, self.orth))
 
     def rotate_coeff_to_orth(self, coeff_ao):
@@ -80,7 +81,7 @@ class RT_SCF:
         for v_ext in args:
             self._potential.append(v_ext)
 
-    def applypotential(self):
+    def apply_potential(self):
         for v_ext in self._potential:
             self.fock_ao += v_ext.calculate_potential(self)
 
