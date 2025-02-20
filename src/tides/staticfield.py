@@ -4,7 +4,7 @@ import numpy as np
 SCF Time-Independent Applied Potential
 '''
 
-def static_bfield(mf, bfield):
+def static_bfield(scf, bfield):
     '''
     Since hcore is time-independent for frozen nuclei, this function calculates a modified hcore in the presence of a static B-field, and overrides the get_hcore() func to return     this modified hcore.
     '''
@@ -12,8 +12,8 @@ def static_bfield(mf, bfield):
     y_bfield = bfield[1]
     z_bfield = bfield[2]
 
-    hcore = mf.get_hcore()
-    ovlp = mf.get_ovlp()
+    hcore = scf.get_hcore()
+    ovlp = scf.get_ovlp()
     Nsp = int(ovlp.shape[0]/2)
 
     ovlp = ovlp[:Nsp,:Nsp]
@@ -24,4 +24,4 @@ def static_bfield(mf, bfield):
     hprime[Nsp:,Nsp:] = hcore - 0.5 * z_bfield * ovlp
     hprime[Nsp:,:Nsp] = 0.5 * (x_bfield + 1j * y_bfield) * ovlp
     hprime[:Nsp,Nsp:] = 0.5 * (x_bfield - 1j * y_bfield) * ovlp
-    mf.get_hcore = lambda *args: hprime
+    scf.get_hcore = lambda *args: hprime

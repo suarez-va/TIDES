@@ -20,38 +20,38 @@ class ElectricField:
     def delta_energy(self):
         return self.amplitude
 
-    def gaussian_energy(self, rt_mf):
-        return (self.amplitude * ((np.exp(-1 * (rt_mf.current_time - self.center) ** 2 / 
-        (2 * self.width ** 2))) * np.sin(self.frequency * rt_mf.current_time
+    def gaussian_energy(self, rt_scf):
+        return (self.amplitude * ((np.exp(-1 * (rt_scf.current_time - self.center) ** 2 / 
+        (2 * self.width ** 2))) * np.sin(self.frequency * rt_scf.current_time
                                         + self.phase)))
 
-    def hann_energy(self, rt_mf):
+    def hann_energy(self, rt_scf):
         return (self.amplitude * ((np.sin(np.pi / self.width * 
-        (rt_mf.current_time - self.center - self.width / 2))) ** 2 * 
-        np.sin(self.frequency * rt_mf.current_time + self.phase)))
+        (rt_scf.current_time - self.center - self.width / 2))) ** 2 * 
+        np.sin(self.frequency * rt_scf.current_time + self.phase)))
 
-    def resonant_energy(self, rt_mf):
-        return self.amplitude * np.sin(self.frequency * rt_mf.current_time + self.phase)
+    def resonant_energy(self, rt_scf):
+        return self.amplitude * np.sin(self.frequency * rt_scf.current_time + self.phase)
 
-    def calculate_field_energy(self, rt_mf):
-        if self.field_type == 'delta' and rt_mf.current_time == self.center:
+    def calculate_field_energy(self, rt_scf):
+        if self.field_type == 'delta' and rt_scf.current_time == self.center:
             return self.delta_energy()
 
         elif self.field_type == 'gaussian':
-            return self.gaussian_energy(rt_mf)
+            return self.gaussian_energy(rt_scf)
 
         elif self.field_type == 'hann':
-            return self.hann_energy(rt_mf)
+            return self.hann_energy(rt_scf)
 
         elif self.field_type == 'resonant':
-            return self.resonant_energy(rt_mf)
+            return self.resonant_energy(rt_scf)
 
         else:
             return np.array([0.0, 0.0, 0.0])
 
-    def calculate_potential(self, rt_mf):
-        energy = self.calculate_field_energy(rt_mf)
-        mol = rt_mf._scf.mol
+    def calculate_potential(self, rt_scf):
+        energy = self.calculate_field_energy(rt_scf)
+        mol = rt_scf._scf.mol
         charges = mol.atom_charges()
         coords = mol.atom_coords()
         nuc_charge_center = np.einsum('z,zx->x', charges, coords) / charges.sum()

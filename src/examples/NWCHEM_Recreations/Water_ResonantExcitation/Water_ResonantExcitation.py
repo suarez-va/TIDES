@@ -1,10 +1,13 @@
 import numpy as np
 from pyscf import gto, scf, dft
-import cProfile
-import pstats
-from rt_scf import RT_SCF
-from rt_vapp import ElectricField
+from tides.rt_scf import RT_SCF
+from tides.rt_vapp import ElectricField
 
+'''
+Original calculation: https://nwchemgit.github.io/RT-TDDFT.html#resonant-ultraviolet-excitation-of-water
+'''
+
+# SCF
 mol = gto.M(
 	verbose = 0,
 	atom='''
@@ -15,17 +18,21 @@ mol = gto.M(
 	basis='6-31G',
     spin = 0)
 
-mf = dft.RKS(mol)
-mf.xc = 'PBE0'
+rks = dft.RKS(mol)
+rks.xc = 'PBE0'
 
-mf.kernel()
+rks.kernel()
 
-rt_mf = RT_SCF(mf, 0.2, 1000)
-rt_mf.observables.update(energy=True, dipole=True)
+# RT_SCF
+rt_scf = RT_SCF(rks, 0.2, 1000)
+rt_scf.observables.update(energy=True, dipole=True)
 
+# Gaussian Field
 gaussian_field = ElectricField('gaussian', amplitude=[0.0, 0.0, 0.0001],
                              center=393.3, frequency=0.3768,
                               width=64.8)
 
-rt_mf.add_potential(gaussian_field)
-rt_mf.kernel()
+rt_scf.add_potential(gaussian_field)
+
+# -->
+rt_scf.kernel()

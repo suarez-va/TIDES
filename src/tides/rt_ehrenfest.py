@@ -2,7 +2,7 @@ import numpy as np
 from pyscf import gto, dft, scf, grad
 from tides import ehrenfest_force
 from tides.rt_scf import RT_SCF
-from tides.rt_nuclei import NUC
+from tides.rt_nuclei import Nuc
 from tides.rt_utils import _sym_orth, get_scf_orbitals
 
 '''
@@ -10,9 +10,9 @@ Real-time SCF + Ehrenfest
 '''
 
 class RT_Ehrenfest(RT_SCF):
-    def __init__(self, mf, timestep, max_time, filename=None, prop=None, frequency=1, chkfile=None, verbose=3, Ne_step=10, N_step=10, get_mo_coeff_print=None):
+    def __init__(self, scf, timestep, max_time, filename=None, prop=None, frequency=1, chkfile=None, verbose=3, Ne_step=10, N_step=10, get_mo_coeff_print=None):
 
-        super().__init__(mf, timestep, max_time, filename, prop, frequency, None, chkfile, verbose)
+        super().__init__(scf, timestep, max_time, filename, prop, frequency, None, chkfile, verbose)
 
         self.Ne_step = Ne_step
         self.N_step = N_step
@@ -23,7 +23,7 @@ class RT_Ehrenfest(RT_SCF):
         if self.den_ao.dtype != np.complex128:
             self.den_ao = self.den_ao.astype(np.complex128)
   
-        self.nuc = NUC(self._scf.mol)
+        self.nuc = Nuc(self._scf.mol)
 
         if self._scf.istype('RKS'): self._grad_func = grad.RKS
         elif self._scf.istype('RHF'): self._grad_func = grad.RHF
@@ -44,26 +44,26 @@ class RT_Ehrenfest(RT_SCF):
         current_N = np.mod(int(self.current_time / self.timestep), self.Ne_step * self.N_step)
         current_Ne = np.mod(current_N, self.Ne_step)
         if current_N == 0: # k = 0, j = 0
-            self.nuc.get_vel(0.5 * self.N_step * self.Ne_step * self.timestep)
-            self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
+            self.nuc.update_vel(0.5 * self.N_step * self.Ne_step * self.timestep)
+            self.nuc.update_pos(0.5 * self.Ne_step * self.timestep)
             self.update_mol()
         elif current_Ne == 0: # k = 0, j != 0
-            self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
+            self.nuc.update_pos(0.5 * self.Ne_step * self.timestep)
             self.update_mol()
         if current_N == self.N_step * self.Ne_step - 1: # k = Ne_step-1, j = N_step-1
-            self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
+            self.nuc.update_pos(0.5 * self.Ne_step * self.timestep)
             self.update_mol()
-            self.nuc.get_vel(0.5 * self.N_step * self.Ne_step * self.timestep)
+            self.nuc.update_vel(0.5 * self.N_step * self.Ne_step * self.timestep)
         elif current_Ne == self.Ne_step - 1: # k = Ne_step-1, j != N_step-1
-            self.nuc.get_pos(0.5 * self.Ne_step * self.timestep)
+            self.nuc.update_pos(0.5 * self.Ne_step * self.timestep)
             self.update_mol()
 
         self.current_time += self.timestep
    
     def update_force(self):
-        self.nuc.get_vel(-0.5 * self.N_step * self.Ne_step * self.timestep)
+        self.nuc.update_vel(-0.5 * self.N_step * self.Ne_step * self.timestep)
         self.nuc.force = ehrenfest_force.get_force(self)
-        self.nuc.get_vel(0.5 * self.N_step * self.Ne_step * self.timestep)
+        self.nuc.update_vel(0.5 * self.N_step * self.Ne_step * self.timestep)
 
     def update_mol(self):
         self._scf.reset(self.nuc.get_mol())
@@ -72,12 +72,12 @@ class RT_Ehrenfest(RT_SCF):
         self.evals, self.evecs = np.linalg.eigh(self.ovlp)
         self.orth = _sym_orth(self)
 
-    def update_grad(self):
+    def _update_grad(self):
         self._grad = self._scf.apply(self._grad_func)
 
-    # Additinal term arising from the moving nuclei in the classical path approximation to be added to the fock matrix
-    # Reminder to turn the complex conserving potential term Omega into one of the rtscf potential classes
-    def get_omega(self):
+    # Additional term arising from the moving nuclei in the classical path approximation to be added to the fock matrix
+    # Reminder to turn the complex conserving potential term Omega into a potential classes
+    def _get_omega(self):
         mol = self._scf.mol
         Rdot = self.nuc.vel
         X = self.orth
