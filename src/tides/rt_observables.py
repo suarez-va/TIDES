@@ -137,26 +137,22 @@ def get_hirshfeld_charge(rt_scf, den_ao):
     rt_scf._hirshfeld_charges = rho.sum(axis=1)
 
 def get_dipole(rt_scf, den_ao):
-    rt_scf._dipole = []
-    rt_scf._dipole.append(rt_scf._scf.dip_moment(mol=rt_scf._scf.mol, dm=rt_scf.den_ao, unit='A.U.', verbose=1))
+    rt_scf._dipole = rt_scf._scf.dip_moment(mol=rt_scf._scf.mol, dm=rt_scf.den_ao, unit='A.U.', verbose=1)
 
 def _temp_get_dipole(rt_scf, den_ao):
     # Temporary fix for argument name discrepancy in GHF.dip_moment ('unit_symbol' instead of 'unit')
-    rt_scf._dipole = []
-    rt_scf._dipole.append(rt_scf._scf.dip_moment(mol=rt_scf._scf.mol, dm=rt_scf.den_ao, unit_symbol='A.U.', verbose=1))
+    rt_scf._dipole = rt_scf._scf.dip_moment(mol=rt_scf._scf.mol, dm=rt_scf.den_ao, unit_symbol='A.U.', verbose=1)
 
 def get_quadrupole(rt_scf, den_ao):
-    rt_scf._quadrupole = []
-    rt_scf._quadrupole.append(rt_scf._scf.quad_moment(mol=rt_scf._scf.mol, dm=rt_scf.den_ao,unit='A.U.', verbose=1))
+    rt_scf._quadrupole = rt_scf._scf.quad_moment(mol=rt_scf._scf.mol, dm=rt_scf.den_ao,unit='A.U.', verbose=1)
 
 def get_mag(rt_scf, den_ao):
-    rt_scf._mag = []
     Nsp = int(np.shape(rt_scf.ovlp)[0] / 2)
 
     magx = np.sum((den_ao[:Nsp, Nsp:] + den_ao[Nsp:, :Nsp]) * rt_scf.ovlp[:Nsp,:Nsp])
     magy = 1j * np.sum((den_ao[:Nsp, Nsp:] - den_ao[Nsp:, :Nsp]) * rt_scf.ovlp[:Nsp,:Nsp])
     magz = np.sum((den_ao[:Nsp, :Nsp] - den_ao[Nsp:, Nsp:]) * rt_scf.ovlp[:Nsp,:Nsp])
-    rt_scf._mag.append([magx, magy, magz])
+    rt_scf._mag = [magx, magy, magz]
 
 def get_hirshfeld_mag(rt_scf, den_ao):
     rho_aa, rho_ab, rho_ba, rho_bb = hirshfeld_partition(rt_scf._scf, den_ao, rt_scf.grids, rt_scf.atom_weights)

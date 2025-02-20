@@ -7,7 +7,7 @@ TiDES is an open-source package for real-time electronic structure simulations. 
 ## How to install:
 
 ```
-pip install git+https://github.com/mc-rohan/Matt-RT_electronic
+pip install git+https://github.com/jskretchmer/TIDES
 ```
 
 ** For better (much better) performance, install an optimized BLAS library, otherwise PySCF will end up looking for BLAS on it's own (often finding a slow version). For conda users, an easy way to do this is by installing scipy through conda.
@@ -26,6 +26,8 @@ conda install scipy
 6. Define and add any external fields.
 7. Start propagation
 
+## Ehrenfest Dynamics
+For Ehrenfest dynamics calculations, use the derived RT_Ehrenfest class instead of the base RT_SCF class. Upon instantiation, provide additional parameters to define the timesteps associated with the nuclear propagation.
 
 ## Propagation parameters
 timestep
@@ -51,12 +53,14 @@ verbosity
   - 9: Debug4
 
 Ne_step
-  - Only for RT_Ehrenfest objects. This determines the frequency in which nuclei positions/velocities are updated.
+  - Only for RT_Ehrenfest objects. This determines the frequency in which nuclei positions/velocities are updated versus electronic steps.
   - Default is 10.
+  - For example, if Ne_step is 10, nuclei are updated every 10 electronic steps.
 
 N_step
-- Only for RT_Ehrenfest objects. This determines the frequency in which nuclear forces are updated.
+- Only for RT_Ehrenfest objects. This determines the frequency in which nuclear forces are updated versus nuclei steps.
 - Default is 10.
+- For example, if N_step is 10, forces are updated every 10 nuclei position/velocity steps.
 
 
 
@@ -96,8 +100,12 @@ All the below observables, unless otherwise stated, will print for verbose > 2 i
 
 ## External Fields
 Electric Field
+  - Compatible with restricted + unrestricted objects
+  - Includes field types defined in https://nwchemgit.github.io/RT-TDDFT.html#excite-excitation-rules
 
 Complex Absorbing Potential
+  - https://doi.org/10.1021/ct400569s
+  - See custom external field section below for implementation
 
 Static Magnetic Field
 
@@ -106,14 +114,9 @@ All that is needed to restart a RT calculation is the current time and the curre
 
 We can run a TiDES calculation that generates a chkfile for the propagation by setting the rt_scf.chkfile attribute to a filename. The file will then be generated and updated.
 
-To restart from a chkfile, set the rt_scf.chkfile attribute to the filename of a pre-existing chkfile. It is important to note that the chkfile only contains the current time and current MO coefficients. So, you will need to redefine propagation parameters, external fields, etc.
+To restart from a chkfile, set the rt_scf.chkfile attribute to the filename of a pre-existing chkfile. The chkfile only contains the current time and current MO coefficients. So, you will need to redefine propagation parameters, external fields, etc.
 
-Chkfile example:
-In progress
-
-## Ehrenfest Dynamics
-For Ehrenfest dynamics calculations, use the derived RT_Ehrenfest class instead of the base RT_SCF class. Upon instantiation, provide additional parameters to define the timesteps associated with the nuclear propagation.
-
+See Chkfile example in src/examples
 
 ## Worked Examples
 The following show some very simple example calculations. All the calculations shown below should be very quick, taking seconds or minutes to run.
@@ -167,7 +170,7 @@ rt_scf.add_potential(delta_field)
 rt_scf.kernel()
 ```
 
-6. Once the calculation is done, we can generate a spectrum. TiDES includes a parser and a simple function to transform the dipole moment to a spectrum, so we'll use both of those. We can also see the electric field pulse in the plot of energy vs. time. Note the small scale of the y-axis: it is still a low strength field.
+6. Once the calculation is done, we can generate a spectrum. TiDES includes a parser and a simple function to transform the dipole moment to a spectrum, so we'll use both of those. We can also see the electric field pulse in the plot of energy vs. time. Note the small scale of the y-axis.
 
 ```
 import matplotlib.pyplot as plt
@@ -235,7 +238,7 @@ mol = gto.M(
 mf = scf.ghf.GHF(mol)
 mf.kernel()
 
-# Create BField object
+# Add BField (this overwrites the hcore)
 static_bfield(mf, [0,0,mag_z])
 
 # Create RT_SCF object
@@ -278,7 +281,7 @@ plt.savefig('H_BField_Mag.png', bbox_inches='tight')
 Here we will simulate charge transfer between two lithiums. We will use the strategy developed in https://nwchemgit.github.io/RT-TDDFT.html#charge-transfer-between-a-tcne-dimer where we prepare the initial dimer orbitals by combining the isolated lithium monomer orbitals. We will start the first lithium with a positive charge and the second with a neutral charge.
 
 1. Create the mol objects. Create and run the UHF objects. Technically we don't need to run the dimer SCF, because we will end up overwriting the initial MO coefficients...
-2. Using the noscfbasis function of the basis_utils module, prepare the 'NOSCF' orbitals and assign it to the dimer. This allows us to artificially start the calculation with the positive charge localized on one lithium. This is an artificially high energy state.
+2. Using the noscfbasis function of the basis_utils module, prepare the 'NOSCF' orbitals and assign it to the dimer. This allows us to start the calculation with the positive charge localized on one lithium. This is an artificially high energy state.
 3. Create a RT_SCF object. Update the observables dictionary to print out both the Mulliken and Hirshfeld atomic charges. We can eventually compare the two, although they should be roughly the same.
 4. Run the calculation.
 
@@ -371,7 +374,7 @@ plt.savefig('Li_ChargeTransfer_Hirsh.png', bbox_inches='tight')
 ![Alt text](images/example_results/Li_ChargeTransfer_Mulliken.png)
 ![Alt text](images/example_results/Li_ChargeTransfer_Hirsh.png)
 
-Here we notice identical behavior in the two charges (as expected) but note smoother oscillations for the Hirshfeld calculated charges.
+Here we notice identical behavior in the two charges (as expected) but note smoother oscillations for the Hirshfeld (bottom plot) calculated charges.
 
 ### Ehrenfest
 This is an example of how to initialize an Ehrenfest calculation. We'll use molecular hydrogen for simplicity.
@@ -459,9 +462,76 @@ plt.savefig('H2_Ehrenfest_Energy.png', bbox_inches='tight')
 ![Alt text](images/example_results/H2_Ehrenfest_Energy.png)
 
 
+# Customization
+
 ## Adding Custom Fields
-In progress
+External potentials are classes with a method called 'calculate_potential.' Any potential classes given in rt_scf._potential will have their 'calculate_potential' called, and the returned array will be added to the Fock matrix (in the AO basis). The rt_scf object must be an argument to the 'calculate_potential' function.
+
+Add potentials to a calculation with the rt_scf.add_potential() function.
+
+The MOCAP defined in https://doi.org/10.1021/ct400569s is an excellent example of how to implement an external field in TiDES. The MOCAP was initially implemented in NWChem's RT-TDDFT module.
+
+
+The MOCAP is defined as its own class in rt_cap.
+
+
+```
+class MOCAP:
+    def __init__(self, expconst, emin, prefac=1, maxval=100):
+        self.expconst = expconst
+        self.emin = emin
+        self.prefac = prefac
+        self.maxval = maxval
+
+    def calculate_cap(self, rt_scf, fock):
+        # Construct fock_orth without CAP
+        fock_orth = np.dot(rt_scf.orth.T, np.dot(fock,rt_scf.orth))
+
+        # Calculate MO energies
+        mo_energy, mo_orth = np.linalg.eigh(fock_orth)
+
+        # Construct damping terms
+        damping_diagonal = []
+
+        for energy in mo_energy:
+            energy_corrected = energy - self.emin
+
+            if energy_corrected > 0:
+                damping_term = self.prefac * (1 - np.exp(self.expconst* energy_corrected))
+                if damping_term < (-1 * self.maxval):
+                    damping_term = -1 * self.maxval
+                damping_diagonal.append(damping_term)
+            else:
+                damping_diagonal.append(0)
+
+        damping_diagonal = np.array(damping_diagonal).astype(np.complex128)
+
+        # Construct damping matrix
+        damping_matrix = np.diag(damping_diagonal)
+        damping_matrix = np.dot(mo_orth, np.dot(damping_matrix, np.conj(mo_orth.T)))
+
+        # Rotate back to ao basis
+        transform = inv(rt_scf.orth.T)
+        damping_matrix_ao = np.dot(transform, np.dot(damping_matrix, transform.T))
+        return 1j * damping_matrix_ao
+
+    def calculate_potential(self, rt_scf):
+        if rt_scf.nmat == 1:
+            return self.calculate_cap(rt_scf, rt_scf.fock_ao)
+        else:
+            return np.stack((self.calculate_cap(rt_scf, rt_scf.fock_ao[0]), self.calculate_cap(rt_scf, rt_scf.fock_ao[1])))
+```
+
+The 'calculate_potential' function is the driver function of the class, and is called when building the Fock matrix during propgation. The Water_MOCAP example (recreated from NWChem) shows how to use the CAP and its effect on dynamics.
 
 
 ## Adding Custom Observables
-In progress
+Each observable in rt_scf.observables has a corresponding key in the protected dictionary rt_scf._observables_functions that links to functions to calculate/print out the observable.
+
+```
+rt_scf._observables_functions['OBSERVABLE'] = [FUNCTION1, FUNCTION2]
+```
+
+Where FUNCTION1 calculates OBSERVABLE, and FUNCTION2 prints out OBSERVABLE.
+
+See rt_observables and rt_output.

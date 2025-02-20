@@ -35,7 +35,7 @@ while not stable:
 static_bfield(LiTrimer, [0, mag_y, 0])
 rt_mf = RT_SCF(LiTrimer, 0.5, 82000)
 
-rt_mf.observables.update(mag=True, hirshfeld_mags=True)
+rt_mf.observables.update(mag=True, hirsh_mag=True)
 
 # Run
 rt_mf.kernel()

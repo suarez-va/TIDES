@@ -21,7 +21,7 @@ mol = gto.M(
 mf = scf.ghf.GHF(mol)
 mf.kernel()
 
-# Create BField object
+# Add BField (this overwrites the hcore)
 static_bfield(mf, [0,0,mag_z])
 
 # Create RT_SCF object

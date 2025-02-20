@@ -51,15 +51,15 @@ def _print_hirshfeld_charge(rt_scf):
 
 def _print_dipole(rt_scf):
     dipole = rt_scf._dipole
-    rt_scf._log.note(f'Total Dipole Moment [X, Y, Z] (AU): {" ".join(map(str,dipole[0]))} \n')
+    rt_scf._log.note(f'Total Dipole Moment [X, Y, Z] (AU): {" ".join(map(str,dipole))} \n')
 
 def _print_quadrupole(rt_scf):
     quadrupole = rt_scf._quadrupole
-    rt_scf._log.note(f'Total Quadrupole Moment [[XX,XY,XZ], [YX,YY,YZ], [ZX,ZY,ZZ]] (AU): {" ".join(map(str,quadrupole[0]))} \n')
+    rt_scf._log.note(f'Total Quadrupole Moment [[XX,XY,XZ], [YX,YY,YZ], [ZX,ZY,ZZ]] (AU): {" ".join(map(str,quadrupole))} \n')
 
 def _print_mag(rt_scf):
     mag = rt_scf._mag
-    rt_scf._log.note(f'Total Magnetization [X, Y, Z]: {" ".join(map(str,np.real(mag[0])))} \n')
+    rt_scf._log.note(f'Total Magnetization [X, Y, Z]: {" ".join(map(str,np.real(mag)))} \n')
 
 def _print_hirshfeld_mag(rt_scf):
     labels = rt_scf.labels

@@ -2,9 +2,24 @@ import numpy as np
 from pyscf import gto, scf, dft
 from tides import rt_scf
 
+'''
+An example of defining a custom field. And how to set up an x2c() calculation.
+
+In this case we will define a electric delta impulse field that works with a generalized spin + x2c object.
+We must calculate the transition dipole tensor of our system using the x2c picture change. 
+Luckily, PySCF has to do this to calculate dipole moments.
+So we will use the same lines of code used in PySCF's "dip_moment" function for the X2C1E_GSCF class.
+'''
+
 mol = gto.M(
-	verbose = 0,
-	atom='Zn 0 0 0')
+    verbose = 0,
+    atom='''
+  O     0.00000000    -0.00001441    -0.34824012
+  H    -0.00000000     0.76001092    -0.93285191
+  H     0.00000000    -0.75999650    -0.93290797
+  ''',
+    basis='6-31G',
+    spin = 0)
 
 mf = scf.GHF(mol).x2c()
 mf.kernel()
@@ -38,7 +53,7 @@ class x2cDeltaField:
 rt_mf = rt_scf.RT_SCF(mf, 0.5, 2000)
 rt_mf.observables.update(energy=True, dipole=True)
 
-delta_field = x2cDeltaField(rt_mf, [0.0001, 0.0000, 0.0000])
+delta_field = x2cDeltaField(rt_mf, [0.0001, 0.0001, 0.0001])
 
 rt_mf.add_potential(delta_field)
 

@@ -41,20 +41,25 @@ class RT_SCF:
             self._fh = open(f'{filename}.txt', 'w')
             self._log = logger.Logger(self._fh, verbose=self.verbose)
 
-        self.chkfile = chkfile
-        if chkfile is not None:
-            if os.path.exists(self.chkfile):
-                restart_from_chkfile(self)
-            else:
-                self.current_time = 0
-        else:
-            self.current_time = 0
-        self._t0 = self.current_time 
         self.den_ao = self._scf.make_rdm1(mo_occ=self.occ)
         if len(np.shape(self.den_ao)) == 3:
             self.nmat = 2
         else:
             self.nmat = 1
+
+        # Restart from chkfile, or create a chkfile
+        # If restarting from chkfile, self.den_ao will be rewritten
+        self.chkfile = chkfile
+        if chkfile is not None:
+            if os.path.exists(self.chkfile):
+                restart_from_chkfile(self)
+                self.den_ao = self._scf.make_rdm1(mo_occ=self.occ)
+            else:
+                self.current_time = 0
+        else:
+            self.current_time = 0
+        self._t0 = self.current_time 
+        
         rt_observables._init_observables(self)
 
     def istype(self, type_code):

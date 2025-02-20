@@ -1,0 +1,1 @@
+Restart.chkfile exists, so Part2.py will start from the state of Part1.chkfile, which is at time=100 au. Part2.py will continue to update Restart.chkfile.

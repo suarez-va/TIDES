@@ -86,10 +86,13 @@ def parse_output(filename):
     'dipole': dipole,
     'quadrupole': quadrupole,
     'charge': mulliken_charge,
-    'mulliken_charge': mulliken_charge,
+    'atom_charge': mulliken_atom_charge,
+    'mulliken_charge': mulliken_atom_charge,
     'mulliken_atom_charge': mulliken_atom_charge,
+    'hirsh_charge': hirsh_atom_charge,
     'hirsh_atom_charge': hirsh_atom_charge,
     'mag': mag,
+    'hirsh_mag': hirsh_atom_mag,
     'hirsh_atom_mag': hirsh_atom_mag,
     'mo_occ': mo_occ,
     'coords': coords,
@@ -128,6 +131,15 @@ def get_mag(line):
     y = float(line.split()[-2])
     z = float(line.split()[-1])
     return [x, y, z]
+
+def get_atom_mag(lines):
+    mag = []
+    for line in lines:
+        x = float(line.split()[-3])
+        y = float(line.split()[-2])
+        z = float(line.split()[-1])
+        mag.append([x, y, z])
+    return mag
 
 def get_mo_occ(line):
     return np.array(line.split('Molecular Orbital Occupations: ')[1].split()).astype(np.float64)
