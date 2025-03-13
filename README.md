@@ -415,10 +415,10 @@ rt_ehrenfest = rt_ehrenfest.RT_Ehrenfest(uhf, 0.05, 500,
 # Declare observables
 rt_ehrenfest.observables.update(energy=True, dipole=True, nuclei=True)
 
-# Let's start the simulation with 5eV of vibrational energy within the H-H bond.
+# Let's start the simulation with 10eV of vibrational energy within the H-H bond.
 # KE = \sum_i{0.5 m_i v_i**2}
 # v_i = \sqrt{2KE_i/m_i}
-# KE_i = 5 / 2
+# KE_i = 10 / 2
 # 1 au = 27.2114 eV
 # H mass = 1836 m_e
 
