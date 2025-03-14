@@ -1,4 +1,5 @@
 import numpy as np
+from pyscf import lib
 
 '''
 Real-time Time-Dependent Applied Potential (Sample Electric Field)
@@ -56,5 +57,14 @@ class ElectricField:
         coords = mol.atom_coords()
         nuc_charge_center = np.einsum('z,zx->x', charges, coords) / charges.sum()
         mol.set_common_orig_(nuc_charge_center)
-        tdip = -1 * mol.intor('int1e_r', comp=3)
+
+        if rt_scf._scf.istype('DKS') | rt_scf._scf.istype('DHF'):
+            nmo = mol.nao_2c()
+            tdip = np.zeros((3, nmo*2, nmo*2), dtype='complex128')
+            c = lib.param.LIGHT_SPEED
+            tdip[:,:nmo,:nmo] += -1 * mol.intor_symmetric('int1e_r_spinor', comp=3)
+            tdip[:,nmo:,nmo:] += -1 * mol.intor_symmetric('int1e_sprsp_spinor', comp=3) / (2*c)**2
+            self.tdip = tdip
+        else:
+            tdip = -1 * mol.intor('int1e_r', comp=3)
         return -1 * np.einsum('xij,x->ij', tdip, energy)
