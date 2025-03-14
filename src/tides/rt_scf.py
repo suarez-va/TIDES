@@ -32,7 +32,7 @@ class RT_SCF:
         if prop is None: prop = 'magnus_interpol'
         if orth is None: orth = addons.canonical_orth_(self.ovlp)
         self.prop = prop
-        
+
         self.orth = orth
 
         if filename is None:
@@ -58,8 +58,8 @@ class RT_SCF:
                 self.current_time = 0
         else:
             self.current_time = 0
-        self._t0 = self.current_time 
-        
+        self._t0 = self.current_time
+
         rt_observables._init_observables(self)
 
     def istype(self, type_code):
@@ -74,7 +74,7 @@ class RT_SCF:
     def get_fock_orth(self, den_ao):
         self.fock_ao = self._scf.get_fock(dm=den_ao).astype(np.complex128)
         if self._potential: self.apply_potential()
-        return np.matmul(self.orth.T, np.matmul(self.fock_ao, self.orth))
+        return np.matmul(self.orth.conj().T, np.matmul(self.fock_ao, self.orth))
 
     def rotate_coeff_to_orth(self, coeff_ao):
         return np.matmul(inv(self.orth), coeff_ao)
