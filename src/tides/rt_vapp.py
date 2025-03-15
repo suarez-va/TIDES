@@ -64,7 +64,6 @@ class ElectricField:
             c = lib.param.LIGHT_SPEED
             tdip[:,:nmo,:nmo] += -1 * mol.intor_symmetric('int1e_r_spinor', comp=3)
             tdip[:,nmo:,nmo:] += -1 * mol.intor_symmetric('int1e_sprsp_spinor', comp=3) / (2*c)**2
-            self.tdip = tdip
         else:
             tdip = -1 * mol.intor('int1e_r', comp=3)
         return -1 * np.einsum('xij,x->ij', tdip, energy)
