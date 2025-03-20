@@ -27,9 +27,12 @@ class ElectricField:
                                         + self.phase)))
 
     def hann_energy(self, rt_scf):
-        return (self.amplitude * ((np.sin(np.pi / self.width * 
-        (rt_scf.current_time - self.center - self.width / 2))) ** 2 * 
-        np.sin(self.frequency * rt_scf.current_time + self.phase)))
+        if (rt_scf.current_time > self.center + self.width/2) or (rt_scf.current_time < self.center - self.width/2):
+            return np.array([0.0 , 0.0 , 0.0])
+        else:
+            return (self.amplitude * ((np.sin(np.pi / self.width * 
+            (rt_scf.current_time - self.center - self.width / 2))) ** 2 * 
+            np.sin(self.frequency * rt_scf.current_time + self.phase)))
 
     def resonant_energy(self, rt_scf):
         return self.amplitude * np.sin(self.frequency * rt_scf.current_time + self.phase)
