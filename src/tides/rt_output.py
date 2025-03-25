@@ -95,6 +95,10 @@ def _print_nuclei(rt_scf):
         rt_scf._log.debug(f' {atom[0]} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[1]))}')
     rt_scf._log.debug(' ')
 
+def _print_spin_square(rt_scf):
+    s2 = rt_scf._s2
+    rt_scf._log.note(f'S^2: {s2} \n')
+
 def _print_mo_coeff(rt_scf):
     rt_scf._log.note(f'\n{"*"*25} Molecular Orbital Coefficients (AO Basis): {"*"*25}\n {rt_scf._scf.mo_coeff} \n{"*"*50}\n')
 

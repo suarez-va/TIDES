@@ -27,6 +27,7 @@ def _init_observables(rt_scf):
         'mo_occ'               : False,
         'nuclei'               : False,
         'cube_density'         : False,
+        'spin_square'          : False,
         'mo_coeff'             : False,
         'den_ao'               : False,
         'fock_ao'              : False,
@@ -48,6 +49,7 @@ def _init_observables(rt_scf):
         'mo_occ'               : [get_mo_occ, rt_output._print_mo_occ],
         'nuclei'               : [get_nuclei, rt_output._print_nuclei],
         'cube_density'         : [get_cube_density, lambda *args: None],
+        'spin_square'          : [get_spin_square, rt_output._print_spin_square],
         'mo_coeff'             : [lambda *args: None, rt_output._print_mo_coeff],
         'den_ao'               : [lambda *args: None, rt_output._print_den_ao],
         'fock_ao'              : [lambda *args: None, rt_output._print_fock_ao],
@@ -191,3 +193,12 @@ def get_cube_density(rt_scf, den_ao):
         else:
             cube_name = f'{rt_scf.current_time}.cube'
         cubegen.density(rt_scf._scf.mol, cube_name, den_ao)
+
+def get_spin_square(rt_scf, den_ao):
+    if rt_scf._scf.istype('UHF'):
+        mo_coeff = (rt_scf._scf.mo_coeff[0][:,rt_scf.occ[0]>0],
+                    rt_scf._scf.mo_coeff[1][:,rt_scf.occ[1]>0])
+    else:
+        mo_coeff = rt_scf._scf.mo_coeff[:,rt_scf.occ>0]
+
+    rt_scf._s2, _ = rt_scf._scf.spin_square(mo_coeff)
