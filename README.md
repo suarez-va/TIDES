@@ -103,6 +103,16 @@ All the below observables, unless otherwise stated, will print for verbose > 2 i
   - Forces - verbose > 4
 - Custom observables
 
+#### MO Occupations - NOSCF Routine
+The NOSCF routine originally implemented in NWChem allowed for a non self consistent field calculation for some set of input vectors. This routine is implemented in TiDES in the basis_utils module. Given a set of monomer molecular orbitals, a fragmented basis can be formed this way.
+
+For a system consisting of monomer 1 and monomer 2 with orthogonalized MO coefficients C'1 and C'2, the NOSCF orbitals can be written as:
+
+![Alt text](images/math/noscf_form.png)
+
+This form is not orthogonal, and is orthogonalized using QR factorization. The orthogonal Q matrix from Numpy's QR factorization is returned as the NOSCF orbital basis.
+
+
 ## External Fields
 Electric Field
   - Compatible with restricted + unrestricted objects
