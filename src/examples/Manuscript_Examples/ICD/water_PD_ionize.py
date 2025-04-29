@@ -148,6 +148,8 @@ dimer = dft.UKS(dimer)
 pd = dft.UKS(pd)
 pa = dft.UKS(pa)
 
+# Defining the tuned LC-PBE* functional. LibXC provides a tunable LC-PBE* w/ OP correlation, so we subtract the OP correlation. 
+
 dimer.xc = 'HYB_GGA_XC_LC_PBEOP, -1 * GGA_C_OP_PBE + PBE'
 dimer._numint.omega = 0.516
 dimer._numint.alpha = 0.0
@@ -177,7 +179,9 @@ rt_water = rt_scf.RT_SCF(dimer,1,2000)
 rt_water.observables.update(mo_occ=True, charge=True, energy=True, hirsh_charge=True)
 
 # Create object for complex absorbing potential and add to rt object
-CAP = MOCAP(0.5, 0.0477, 1.0, 10.0)
+# Arguments are: expconst, emin, prefac, maxval
+
+CAP = MOCAP(0.5, 0.0477, 1.0, 100.0)
 rt_water.add_potential(CAP)
 
 # Remove electron (in SCF basis)
@@ -187,3 +191,6 @@ rt_utils.input_fragments(rt_water, pd, pa)
 
 # Start calculation, send in noscf_orbitals to print
 rt_water.kernel(mo_coeff_print=noscf_orbitals)
+
+# This input yields nearly identical dynamics to https://doi.org/10.1021/acs.jpclett.4c01146
+# After about 25 fs there is some small drift, however we attribute these differences to purely numerical differences in our integration and building of the Fock matrix through PySCF.
