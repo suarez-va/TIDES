@@ -23,7 +23,7 @@ class RT_SCF:
         self._scf = scf
         self.ovlp = self._scf.get_ovlp()
         self.occ = self._scf.get_occ()
-
+        
         self.verbose = verbose
         self._potential = []
         self.fragments = []

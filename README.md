@@ -15,6 +15,7 @@ pip install git+https://github.com/jskretchmer/TIDES
 conda install scipy
 ```
 
+See PySCF's website for more details (https://pyscf.org/install.html).
 
 ## How to start a calculation:
 (See worked examples below)
@@ -24,18 +25,21 @@ conda install scipy
 4. Create a RT_SCF or RT_Ehrenfest object, sending the static SCF object as an argument along with the propagation parameters.
 5. Declare the observables you wish to calculate.
 6. Define and add any external fields.
-7. Start propagation
+7. Start propagation with the RT_SCF.kernel() function
 
 ## Ehrenfest Dynamics
 For Ehrenfest dynamics calculations, use the derived RT_Ehrenfest class instead of the base RT_SCF class. Upon instantiation, provide additional parameters to define the timesteps associated with the nuclear propagation.
 
 ## Propagation parameters
-timestep
+timestep:
+- In atomic units (1 au ~= 41.34 fs)
+- Timestep is constant throughout a given calculations
 
-max_time
+max_time:
+- In atomic units
 
-frequency
-- How often observables are printed. Default is 1, corresponding to a print out at every time step.
+frequency:
+- How often observables are printed. Default is 1, corresponding to a print out at every step.
 
 verbosity
 - We use the same logger defined in PySCF.
@@ -51,6 +55,7 @@ verbosity
   - 7: Debug2
   - 8: Debug3
   - 9: Debug4
+- Most of the printing happens at the default "Note" level
 
 Ne_step
   - Only for RT_Ehrenfest objects. This determines the frequency in which nuclei positions/velocities are updated versus electronic steps.
@@ -98,6 +103,16 @@ All the below observables, unless otherwise stated, will print for verbose > 2 i
   - Forces - verbose > 4
 - Custom observables
 
+#### MO Occupations - NOSCF Routine
+The NOSCF routine originally implemented in NWChem allowed for a non self consistent field calculation for some set of input vectors. This routine is implemented in TiDES in the basis_utils module. Given a set of monomer molecular orbitals, a fragmented basis can be formed this way.
+
+For a system consisting of monomer 1 and monomer 2 with orthogonalized MO coefficients C'1 and C'2, the NOSCF orbitals can be written as:
+
+![Alt text](images/math/noscf_form.png)
+
+This form is not orthogonal, and is orthogonalized using QR factorization. The orthogonal Q matrix from Numpy's QR factorization is returned as the NOSCF orbital basis.
+
+
 ## External Fields
 Electric Field
   - Compatible with restricted + unrestricted objects
@@ -126,7 +141,7 @@ This example was originally performed as an example for NWChem's RT-TDDFT module
 
 1. First create the water mol object and a RHF object. Then run the SCF calculation.
 2. Create a RT_SCF object. By default the interpolated Magnus integrator is used, which can maintain accuracy with large timesteps.
-3. We'll print out the energy and dipole moment of the system at each timestep. We'll need to dipole moment to generate the spectrum.
+3. We'll print out the energy and dipole moment of the system at each timestep. We'll need the dipole moment to generate the spectrum.
 4. To simulate absorbance spectra with real-time electronic structure methods, we simulate the dipole moment in the presence of an electric field. A convenient (albeit nonphysical) electric field is a delta impulse applied at the first time step. This weakly excites all electronic modes.
 5. Run the calculation.
 
@@ -205,7 +220,7 @@ plt.savefig('Water_RHF_UV-Vis_Energy.png', bbox_inches='tight')
 We will recreate a GHF calculation of hydrogen in a static magnetic field. https://doi.org/10.1063/1.4902884
 
 1. Create the mol object. Create and run a GHF object.
-2. We will apply the magnetic field by modifying the core Hamiltonian of the GHF object. The staticfield module in TiDES will do this.
+2. We will apply the magnetic field by overwriting the core Hamiltonian of the GHF object to include the static field. The staticfield module in TiDES will do this.
 3. Create a RT_SCF object. Update the observables dictionary to print out the magnetization.
 4. Run the calculation.
 
@@ -371,6 +386,8 @@ plt.legend()
 plt.savefig('Li_ChargeTransfer_Hirsh.png', bbox_inches='tight')
 ```
 
+Mulliken is plotted on top, Hirshfeld is plotted on bottom.
+
 ![Alt text](images/example_results/Li_ChargeTransfer_Mulliken.png)
 ![Alt text](images/example_results/Li_ChargeTransfer_Hirsh.png)
 
@@ -415,10 +432,10 @@ rt_ehrenfest = rt_ehrenfest.RT_Ehrenfest(uhf, 0.05, 500,
 # Declare observables
 rt_ehrenfest.observables.update(energy=True, dipole=True, nuclei=True)
 
-# Let's start the simulation with 5eV of vibrational energy within the H-H bond.
+# Let's start the simulation with 10eV of vibrational energy within the H-H bond.
 # KE = \sum_i{0.5 m_i v_i**2}
 # v_i = \sqrt{2KE_i/m_i}
-# KE_i = 5 / 2
+# KE_i = 10 / 2
 # 1 au = 27.2114 eV
 # H mass = 1836 m_e
 
