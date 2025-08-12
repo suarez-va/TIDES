@@ -201,4 +201,4 @@ def get_spin_square(rt_scf, den_ao):
     else:
         mo_coeff = rt_scf._scf.mo_coeff[:,rt_scf.occ>0]
 
-    rt_scf._s2, _ = rt_scf._scf.spin_square(mo_coeff)
+    rt_scf._s2, rt_scf._2s_p1 = rt_scf._scf.spin_square(mo_coeff, s=rt_scf.ovlp)
