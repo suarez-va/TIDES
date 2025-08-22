@@ -32,7 +32,7 @@ For Ehrenfest dynamics calculations, use the derived RT_Ehrenfest class instead 
 
 ## Propagation parameters
 timestep:
-- In atomic units (1 au ~= 41.34 fs)
+- In atomic units (1 fs ~= 41.34 au)
 - Timestep is constant throughout a given calculations
 
 max_time:
