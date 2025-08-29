@@ -5,6 +5,8 @@ from tides.hirshfeld import hirshfeld_partition, get_weights
 from tides.rt_utils import _update_mo_coeff_print
 from pyscf import lib
 from pyscf.tools import cubegen
+from datetime import datetime
+import os
 
 '''
 Real-time Observable Functions
@@ -73,11 +75,48 @@ def _check_observables(rt_scf):
     if rt_scf._scf.istype('GHF') | rt_scf._scf.istype('GKS'):
         rt_scf._observables_functions['dipole'][0] = _temp_get_dipole
 
+    # If we are printing nuclei, we must be a RT_Ehrenfest object
+    if rt_scf.observables['nuclei']:
+        assert rt_scf.istype('RT_Ehrenfest')
+
+    # If we are printing nuclei, we need to generate an xyz file
+    if rt_scf.observables['nuclei']:
+        xyz_file = 'trajectory'
+        
+        # Check to make sure this file doesn't exist
+        name_available = False
+        while not name_available:
+            if os.path.exists(f'{xyz_file}.xyz'):
+                # Just append the current time to the filename if trajectory.xyz already exists
+                xyz_file = xyz_file + str(datetime.now()).replace(' ','_').replace('-','_').replace(':','_').split('.')[0]
+            else:
+                name_available = True
+                break
+
+        rt_scf._xyz_fh = open(f'{xyz_file}.xyz', 'w') 
+        rt_scf._log.note(f'Nuclei xyz output file: {xyz_file}.xyz')
+
+        # rt_scf.verbose > 2 will print coordinates
+        # rt_scf.verbose > 3 will print coordinates and velocities
+        # rt_scf.verbose > 4 will print coordinates and velocities and forces
+        # Checking here to assign to correct print function for the entire calculation, 
+        # so we don't have to check every time step.
+        if rt_scf.verbose > 4:
+            rt_scf._update_xyz = rt_output._nuclei_coords_vels_forces
+        elif rt_scf.verbose > 3:
+            rt_scf._update_xyz = rt_output._nuclei_coords_vels
+        elif rt_scf.verbose > 2:
+            rt_scf._update_xyz = rt_output._nuclei_coords
+
     for key, print_value in rt_scf.observables.items():
         if not print_value:
             del rt_scf._observables_functions[key]
 
-
+    # Now rt_scf._observables_functions only has observables to be calculated
+    # One final check here that if any observable is being calculated, rt_scf.verbose > 2
+    # Likely no one will ever run with verbose < 3 (no observables will be printed)
+    if rt_scf._observables_functions:
+        assert rt_scf.verbose > 2
 
 def get_observables(rt_scf):
     if rt_scf.istype('RT_Ehrenfest'):
