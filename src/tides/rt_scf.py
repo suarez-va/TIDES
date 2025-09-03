@@ -102,5 +102,9 @@ class RT_SCF:
                 self._log.note('Propagation Stopped Early')
             if hasattr(self, 'fh'):
                 self.fh.close()
+            if hasattr(self, '_xyz_fh'):
+                # This is only important for unfrozen nuclei, printing .xyz files
+                # Putting this here anyways for RT_Ehrenfest and other future derived classes
+                self._xyz_fh.close()
 
         return self

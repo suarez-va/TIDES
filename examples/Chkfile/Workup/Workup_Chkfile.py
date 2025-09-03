@@ -2,8 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tides.parse_rt import parse_output
 
-result_p1 = parse_output('Part1.pyo')
-result_p2 = parse_output('Part2.pyo')
+result_p1 = parse_output('Part1.out')
+result_p2 = parse_output('Part2.out')
 
 time = np.concatenate((result_p1['time'], result_p2['time']))
 mulliken = np.concatenate((result_p1['mulliken_atom_charge'], result_p2['mulliken_atom_charge']), axis=0)

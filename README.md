@@ -24,7 +24,7 @@ See PySCF's website for more details (https://pyscf.org/install.html).
 3. Run the SCF calculation
 4. Create a RT_SCF or RT_Ehrenfest object, sending the static SCF object as an argument along with the propagation parameters.
 5. Declare the observables you wish to calculate.
-6. Define and add any external fields.
+6. Define and add any external potentials.
 7. Start propagation with the RT_SCF.kernel() function
 
 ## Ehrenfest Dynamics
@@ -103,6 +103,8 @@ All the below observables, unless otherwise stated, will print for verbose > 2 i
   - Forces - verbose > 4
 - Custom observables
 
+For Ehrenfest calculations, if the Nuclei observable is printed, it will be printed to a trajectory.xyz file.
+
 #### MO Occupations - NOSCF Routine
 The NOSCF routine originally implemented in NWChem allowed for a non self consistent field calculation for some set of input vectors. This routine is implemented in TiDES in the basis_utils module. Given a set of monomer molecular orbitals, a fragmented basis can be formed this way.
 
@@ -113,14 +115,14 @@ For a system consisting of monomer 1 and monomer 2 with orthogonalized MO coeffi
 This form is not orthogonal, and is orthogonalized using QR factorization. The orthogonal Q matrix from Numpy's QR factorization is returned as the NOSCF orbital basis.
 
 
-## External Fields
+## External Potentials
 Electric Field
   - Compatible with restricted + unrestricted objects
   - Includes field types defined in https://nwchemgit.github.io/RT-TDDFT.html#excite-excitation-rules
 
 Complex Absorbing Potential
   - https://doi.org/10.1021/ct400569s
-  - See custom external field section below for implementation
+  - See custom external potential section below for implementation
 
 Static Magnetic Field
 
@@ -133,8 +135,11 @@ To restart from a chkfile, set the rt_scf.chkfile attribute to the filename of a
 
 See Chkfile example in src/examples
 
-## Worked Examples
-The following show some very simple example calculations. All the calculations shown below should be very quick, taking seconds or minutes to run.
+## Example calculations
+
+The examples folder in this repository contains sample inputs for a variety of different calculations in TiDES.
+
+However, we will walk through a few simple calculations to illustrate how to use TiDES. All the calculations shown below should be very quick, taking seconds or minutes to run. The calculations can be found in examples/Water_RHF_UV-Vis, examples/H_BField, examples/Li_ChargeTransfer, and examples/H2_Ehrenfest.
 
 ### RHF Absorption Spectrum of Water
 This example was originally performed as an example for NWChem's RT-TDDFT module: https://nwchemgit.github.io/RT-TDDFT.html#resonant-ultraviolet-excitation-of-water. We will essentially recreate it here, but use RHF instead of RKS.
@@ -146,7 +151,7 @@ This example was originally performed as an example for NWChem's RT-TDDFT module
 5. Run the calculation.
 
 ```
-python Water_RHF_UV-Vis.py > Water_RHF_UV-Vis.pyo
+python Water_RHF_UV-Vis.py > Water_RHF_UV-Vis.out
 ```
 
 ##### Water_RHF_UV-Vis.py
@@ -192,7 +197,7 @@ import matplotlib.pyplot as plt
 from tides.parse_rt import parse_output
 from tides.rt_spec import abs_spec
 
-result = parse_output('Water_RHF_UV-Vis.pyo')
+result = parse_output('Water_RHF_UV-Vis.out')
 w, osc_str = abs_spec(result['time'], result['dipole'], 0.0001)
 
 plt.figure()
@@ -225,7 +230,7 @@ We will recreate a GHF calculation of hydrogen in a static magnetic field. https
 4. Run the calculation.
 
 ```
-python H_BField.py > H_BField.pyo
+python H_BField.py > H_BField.out
 ```
 
 ##### H_BField.py
@@ -277,7 +282,7 @@ rt_mf.kernel()
 import matplotlib.pyplot as plt
 from tides.parse_rt import parse_output
 
-result = parse_output('H_BField.pyo')
+result = parse_output('H_BField.out')
 
 
 plt.figure()
@@ -301,7 +306,7 @@ Here we will simulate charge transfer between two lithiums. We will use the stra
 4. Run the calculation.
 
 ```
-python Li_ChargeTransfer.py > Li_ChargeTransfer.pyo
+python Li_ChargeTransfer.py > Li_ChargeTransfer.out
 ```
 
 ##### Li_ChargeTransfer.py
@@ -366,7 +371,7 @@ rt_mf.kernel()
 import matplotlib.pyplot as plt
 from tides.parse_rt import parse_output
 
-result = parse_output('Li_ChargeTransfer.pyo')
+result = parse_output('Li_ChargeTransfer.out')
 
 
 plt.figure()
@@ -403,7 +408,7 @@ This is an example of how to initialize an Ehrenfest calculation. We'll use mole
 5. Run the calculation.
 
 ```
-python H2_Ehrenfest.py > H2_Ehrenfest.pyo
+python H2_Ehrenfest.py > H2_Ehrenfest.out
 ```
 
 
@@ -455,15 +460,29 @@ rt_ehrenfest.kernel()
 
 ```
 import matplotlib.pyplot as plt
+import numpy as np
+from MDAnalysis.coordinates.XYZ import XYZReader
 from tides.parse_rt import parse_output, get_length
 from tides.rt_spec import abs_spec
 
-result = parse_output('H2_Ehrenfest.pyo')
 
-HH_dist = get_length(result['coords'], [1,2])
+result = parse_output('H2_Ehrenfest.out')
+
+xyz = XYZReader('trajectory.xyz', dt=0.05)
+xyz.units['time'] = 'au'
+
+time = []
+positions = []
+for ts in xyz:
+    time.append(ts.time)
+    positions.append(np.array(ts.positions).astype(np.float64))
+time = np.array(time)
+positions = np.array(positions)
+
+HH_dist = get_length(positions, [1,2])
 
 plt.figure()
-plt.plot(result['time'], HH_dist)
+plt.plot(time, HH_dist)
 plt.ylabel(r'R(H-H) ($\mathrm{\AA}$)')
 plt.xlabel('Time (au)')
 plt.savefig('H2_Ehrenfest_Distance.png', bbox_inches='tight')
@@ -481,12 +500,12 @@ plt.savefig('H2_Ehrenfest_Energy.png', bbox_inches='tight')
 
 # Customization
 
-## Adding Custom Fields
+## Adding Custom Potentials
 External potentials are classes with a method called 'calculate_potential.' Any potential classes given in rt_scf._potential will have their 'calculate_potential' called, and the returned array will be added to the Fock matrix (in the AO basis). The rt_scf object must be an argument to the 'calculate_potential' function.
 
-Add potentials to a calculation with the rt_scf.add_potential() function.
+Add potentials to a calculation with the rt_scf.add_potential() function. See examples/Custom_Potential and examples/Blank_Potential for simple implementations of custom potentials.
 
-The MOCAP defined in https://doi.org/10.1021/ct400569s is an excellent example of how to implement an external field in TiDES. The MOCAP was initially implemented in NWChem's RT-TDDFT module.
+The MOCAP defined in https://doi.org/10.1021/ct400569s is also an excellent example of how to implement an external potential in TiDES. The MOCAP was initially implemented in NWChem's RT-TDDFT module.
 
 
 The MOCAP is defined as its own class in rt_cap.
@@ -551,4 +570,4 @@ rt_scf._observables_functions['OBSERVABLE'] = [FUNCTION1, FUNCTION2]
 
 Where FUNCTION1 calculates OBSERVABLE, and FUNCTION2 prints out OBSERVABLE.
 
-See rt_observables and rt_output.
+See examples/Custom_Observable and examples/Blank_Observable for sample inputs with custom observables.

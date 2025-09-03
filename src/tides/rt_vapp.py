@@ -2,8 +2,11 @@ import numpy as np
 from pyscf import lib
 
 '''
-Real-time Time-Dependent Applied Potential (Sample Electric Field)
+Real-time Time-Dependent Applied Potential (Electric Field)
 Currently for restricted/unrestricted
+
+Real-time static B-field
+For generalized
 '''
 
 class ElectricField:
@@ -70,3 +73,30 @@ class ElectricField:
         else:
             tdip = -1 * mol.intor('int1e_r', comp=3)
         return -1 * np.einsum('xij,x->ij', tdip, energy)
+
+
+
+class StaticMagneticField:
+    ''' 
+    For spin-generalized calculations.
+    Currently not available for Ehrenfest, awaiting generalized gradient support within PySCF.
+    For RT_SCF calculations the static_bfield function in staticfield.py could be used instead of this class.
+    '''
+    def __init__(self, bfield):
+        self.x_bfield = bfield[0]
+        self.y_bfield = bfield[1]
+        self.z_bfield = bfield[2]
+
+    def calculate_potential(self, rt_scf):
+        ovlp = rt_scf.ovlp
+        Nsp = int(ovlp.shape[0]/2)
+
+        ovlp = ovlp[:Nsp,:Nsp]
+
+        v = np.zeros([2*Nsp,2*Nsp], dtype=np.complex128)
+        v[:Nsp,:Nsp] = 0.5 * self.z_bfield * ovlp
+        v[Nsp:,Nsp:] = -0.5 * self.z_bfield * ovlp
+        v[Nsp:,:Nsp] = 0.5 * (self.x_bfield + 1j * self.y_bfield) * ovlp
+        v[:Nsp,Nsp:] = 0.5 * (self.x_bfield - 1j * self.y_bfield) * ovlp
+
+        return v
