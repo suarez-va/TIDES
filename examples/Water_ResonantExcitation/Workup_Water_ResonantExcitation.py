@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tides.parse_rt import parse_output
 
-result = parse_output('Water_ResonantExcitation.pyo')
+result = parse_output('Water_ResonantExcitation.out')
 
 efield = 0.0001 * np.exp(-(result['time']-393.3)**2/(2*64.8**2)) * np.sin(0.3768*result['time'])
 

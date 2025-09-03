@@ -22,7 +22,7 @@ def get_force(rt_ehrenfest):
         grad_elec = _grad_elec_unrestricted(rt_ehrenfest._grad, rt_ehrenfest.den_ao, etilde, v, Vinv)
     elif rt_ehrenfest._scf.istype('GHF'):
         #grad_elec = _grad_elec_generalized(rt_ehrenfest._grad, rt_ehrenfest.den_ao, etilde, v, Vinv)
-        raise Exception('Not Implemented')
+        raise Exception('Generalized Gradients Not Yet Implemented')
     return -(grad_nuc + grad_elec)
 
 def _grad_elec_restricted(scf_grad, den_ao=None, etilde=None, v=None, Vinv=None):

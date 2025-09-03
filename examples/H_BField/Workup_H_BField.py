@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from tides.parse_rt import parse_output
 
-result = parse_output('H_BField.pyo')
+result = parse_output('H_BField.out')
 
 
 plt.figure()

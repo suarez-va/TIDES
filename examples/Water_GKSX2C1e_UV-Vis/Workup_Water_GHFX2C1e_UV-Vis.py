@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from tides.parse_rt import parse_output
 from tides.rt_spec import abs_spec
 
-result = parse_output('Water_GHFX2C1e_UV-Vis.pyo')
+result = parse_output('Water_GHFX2C1e_UV-Vis.out')
 w, osc_str = abs_spec(result['time'], result['dipole'], 0.0001)
 
 plt.figure()

@@ -21,7 +21,7 @@ co.kernel()
 rt_co = rt_scf.RT_SCF(co, 0.02, 2000)
 rt_co.observables.update(dipole=True)
 
-delta_field = ElectricField('delta', [0.0000, 0.01, 0.0000])
+delta_field = ElectricField('delta', [0.0000, 0.0000, 0.01])
 
 rt_co.add_potential(delta_field)
 

@@ -23,8 +23,6 @@ def parse_output(filename):
     mag = []
     hirsh_atom_mag = []
     mo_occ = []
-    coords = []
-    vels = []
     frag_charge = []
     alpha_energies = []
     beta_energies = []
@@ -56,10 +54,6 @@ def parse_output(filename):
             mag.append(get_mag(line))
         if 'Hirshfeld Magnetization' in line:
             hirsh_atom_mag.append(get_atom_mag(lines[idx+1:idx+mol_length+1]))
-        if 'Nuclear Coordinates' in line:
-            coords.append(get_coords(lines[idx+1:idx+mol_length+1]))
-        if 'Nuclear Velocities' in line:
-            vels.append(get_vels(lines[idx+1:idx+mol_length+1]))
         if 'Molecular Orbital Energies (Alpha): ' in line:
             alpha_energies.append(get_mo_energy(line))
         if 'Molecular Orbital Energies (Beta): ' in line:
@@ -80,8 +74,6 @@ def parse_output(filename):
     mag = np.array(mag)
     hirsh_atom_mag = np.array(hirsh_atom_mag)
     mo_occ = np.array(mo_occ)
-    coords = np.array(coords)
-    vels = np.array(vels)
     frag_charge = np.array(frag_charge).reshape([len(time), int(np.size(frag_charge) / len(time))])
     alpha_energies = np.array(alpha_energies)
     beta_energies = np.array(beta_energies)
@@ -103,8 +95,6 @@ def parse_output(filename):
     'hirsh_mag': hirsh_atom_mag,
     'hirsh_atom_mag': hirsh_atom_mag,
     'mo_occ': mo_occ,
-    'coords': coords,
-    'vels': vels,
     'frag_charge': frag_charge,
     'alpha_energies': alpha_energies,
     'beta_energies': beta_energies,
@@ -163,29 +153,11 @@ def get_charge(line):
 def get_frag_charge(line):
     return float(line.split()[4])
 
-def get_coords(lines):
-    coords = []
-    for line in lines:
-        atom_coords = []
-        for i in range(1,4):
-            atom_coords.append(float(line.split()[i]))
-        coords.append(atom_coords)
-    return coords
-
 def get_atom_charge(lines):
     charges = []
     for line in lines:
         charges.append(float(line.split()[1]))
     return charges
-
-def get_vels(lines):
-    vels = []
-    for line in lines:
-        atom_vels = []
-        for i in range(1,4):
-            atom_vels.append(float(line.split()[i]))
-        vels.append(atom_vels)
-    return vels
 
 def get_length(coords, atoms):
     # Gets length between 2 atoms

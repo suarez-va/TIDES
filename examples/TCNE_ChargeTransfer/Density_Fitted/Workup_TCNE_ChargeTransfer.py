@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from tides.parse_rt import parse_output
 
-result = parse_output('TCNE_ChargeTransfer.pyo')
+result = parse_output('TCNE_ChargeTransfer.out')
 
 
 plt.figure()

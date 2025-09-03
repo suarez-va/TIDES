@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 from tides.parse_rt import parse_output
 
-result_without_mocap = parse_output('Water_Without_MOCAP.pyo')
-result_mocap = parse_output('Water_MOCAP.pyo')
+result_without_mocap = parse_output('Water_Without_MOCAP.out')
+result_mocap = parse_output('Water_MOCAP.out')
 
 plt.figure()
 ax = plt.axes()
