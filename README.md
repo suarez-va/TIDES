@@ -92,7 +92,7 @@ All the below observables, unless otherwise stated, will print for verbose > 2 i
 - Dipole - 'dipole'
 - Quadrupole - 'quadrupole'
 - Electronic Charge - 'charge'
-- Mulliken Charge - 'atom_charge' or 'mulliken_charge' or 'mulliken_atom_charge'
+- Mulliken Charge - 'mulliken_charge' or 'mulliken_atom_charge'
 - Hirshfeld Charge - 'hirsh_charge' or 'hirsh_atom_charge'
 - Magnetization - 'mag'
 - Hirshfeld Magnetization - 'hirsh_mag' or 'hirsh_atom_mag'
