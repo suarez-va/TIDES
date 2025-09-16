@@ -4,6 +4,7 @@ from tides.basis_utils import _mask_fragment_basis
 from tides.hirshfeld import hirshfeld_partition, get_weights
 from tides.rt_utils import _update_mo_coeff_print
 from pyscf import lib
+from pyscf.lib import logger
 from pyscf.tools import cubegen
 from datetime import datetime
 import os
@@ -18,7 +19,6 @@ def _init_observables(rt_scf):
         'dipole'               : False,
         'quadrupole'           : False,
         'charge'               : False,
-        'atom_charge'          : False,
         'mulliken_charge'      : False,
         'mulliken_atom_charge' : False,
         'hirsh_charge'         : False,
@@ -40,7 +40,6 @@ def _init_observables(rt_scf):
         'dipole'               : [get_dipole, rt_output._print_dipole],
         'quadrupole'           : [get_quadrupole, rt_output._print_quadrupole],
         'charge'               : [get_charge, rt_output._print_charge],
-        'atom_charge'          : [get_mulliken_charge, rt_output._print_mulliken_charge],
         'mulliken_charge'      : [get_mulliken_charge, rt_output._print_mulliken_charge],
         'mulliken_atom_charge' : [get_mulliken_charge, rt_output._print_mulliken_charge],
         'hirsh_charge'         : [get_hirshfeld_charge, rt_output._print_hirshfeld_charge],
@@ -94,6 +93,7 @@ def _check_observables(rt_scf):
                 break
 
         rt_scf._xyz_fh = open(f'{xyz_file}.xyz', 'w') 
+        rt_scf._xyz_log = logger.Logger(rt_scf._xyz_fh, verbose=rt_scf.verbose)
         rt_scf._log.note(f'Nuclei xyz output file: {xyz_file}.xyz')
 
         # rt_scf.verbose > 2 will print coordinates

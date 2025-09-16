@@ -81,21 +81,21 @@ def _print_mulliken_charge(rt_scf):
     rt_scf._log.note(' ')
 
 def _print_nuclei(rt_scf):
-    rt_scf._xyz_fh.write(f'{rt_scf._scf.mol.natm}\n')
-    rt_scf._xyz_fh.write(f'Current Time (AU): {rt_scf.current_time:.8f}\n')
+    rt_scf._xyz_log.note(f'{rt_scf._scf.mol.natm}')
+    rt_scf._xyz_log.note(f'Current Time (AU): {rt_scf.current_time:.8f}')
     rt_scf._update_xyz(rt_scf, rt_scf._nuclei)
 
 def _nuclei_coords(rt_scf, nuclei):
     for atom in zip(nuclei[0], nuclei[1]):
-        rt_scf._xyz_fh.write(f'{atom[0]} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[1]))}\n')
+        rt_scf._xyz_log.note(f'{atom[0]} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[1]))}')
 
 def _nuclei_coords_vels(rt_scf, nuclei):
     for atom in zip(nuclei[0], nuclei[1], nuclei[2]):
-        rt_scf._xyz_fh.write(f'{atom[0]} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[1]))} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[2]))}\n')
+        rt_scf._xyz_log.note(f'{atom[0]} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[1]))} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[2]))}')
 
 def _nuclei_coords_vels_forces(rt_scf, nuclei):
     for atom in zip(nuclei[0], nuclei[1], nuclei[2], nuclei[3]):
-        rt_scf._xyz_fh.write(f'{atom[0]} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[1]))} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[2]))} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[3]))}\n')
+        rt_scf._xyz_log.note(f'{atom[0]} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[1]))} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[2]))} \t {"\t".join(map(lambda x: f"{x:.11f}",atom[3]))}')
 
 def _print_spin_square(rt_scf):
     s2 = rt_scf._s2

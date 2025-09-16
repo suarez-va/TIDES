@@ -38,7 +38,7 @@ class RT_SCF:
         if filename is None:
             self._log = logger.Logger(verbose=self.verbose)
         else:
-            self._fh = open(f'{filename}.txt', 'w')
+            self._fh = open(filename, 'w')
             self._log = logger.Logger(self._fh, verbose=self.verbose)
 
         self.den_ao = self._scf.make_rdm1(mo_occ=self.occ)
