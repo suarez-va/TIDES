@@ -23,7 +23,7 @@ class RT_SCF:
         self._scf = scf
         self.ovlp = self._scf.get_ovlp()
         self.occ = self._scf.get_occ()
-
+        
         self.verbose = verbose
         self._potential = []
         self.fragments = []
@@ -38,7 +38,7 @@ class RT_SCF:
         if filename is None:
             self._log = logger.Logger(verbose=self.verbose)
         else:
-            self._fh = open(f'{filename}.txt', 'w')
+            self._fh = open(filename, 'w')
             self._log = logger.Logger(self._fh, verbose=self.verbose)
 
         self.den_ao = self._scf.make_rdm1(mo_occ=self.occ)
@@ -102,5 +102,9 @@ class RT_SCF:
                 self._log.note('Propagation Stopped Early')
             if hasattr(self, 'fh'):
                 self.fh.close()
+            if hasattr(self, '_xyz_fh'):
+                # This is only important for unfrozen nuclei, printing .xyz files
+                # Putting this here anyways for RT_Ehrenfest and other future derived classes
+                self._xyz_fh.close()
 
         return self

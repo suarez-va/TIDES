@@ -2,6 +2,10 @@
 __pycache__/
 *.py[cod]
 
+# Output files
+*.out
+*.xyz
+
 # C extensions
 *.so
 *.dylib
