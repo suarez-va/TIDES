@@ -1,0 +1,12 @@
+name: tides
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - matplotlib
+  - pip
+  - pip:
+      - pyscf
+      - git+https://github.com/frobnitzem/hirshfeld
+
