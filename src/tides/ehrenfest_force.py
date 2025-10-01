@@ -21,8 +21,8 @@ def get_force(rt_ehrenfest):
     elif rt_ehrenfest._scf.istype('UHF'):
         grad_elec = _grad_elec_unrestricted(rt_ehrenfest._grad, rt_ehrenfest.den_ao, etilde, v, Vinv)
     elif rt_ehrenfest._scf.istype('GHF'):
-        #grad_elec = _grad_elec_generalized(rt_ehrenfest._grad, rt_ehrenfest.den_ao, etilde, v, Vinv)
-        raise Exception('Generalized Gradients Not Yet Implemented')
+        grad_elec = _grad_elec_generalized(rt_ehrenfest._grad, rt_ehrenfest.den_ao, etilde, v, Vinv)
+        #raise Exception('Generalized Gradients Not Yet Implemented')
     return -(grad_nuc + grad_elec)
 
 def _grad_elec_restricted(scf_grad, den_ao=None, etilde=None, v=None, Vinv=None):
@@ -133,12 +133,13 @@ def _grad_elec_generalized(scf_grad, den_ao=None, etilde=None, v=None, Vinv=None
 
     scf = scf_grad.base
     mol = scf_grad.mol
+    nao = mol.nao
     mo_coeff = scf.mo_coeff
     mo_occ = scf.mo_occ
 
     if etilde is None or v is None or Vinv is None: etilde, v, Vinv = _grad_lowdin(mol)
 
-    hcore_deriv = scf_grad.hcore_generator(mol)
+    hcore_deriv = _generalized_hcore_generator(scf_grad, mol)
     dS = scf_grad.get_ovlp()
 
     if den_ao is None: den_ao = scf.make_rdm1(mo_coeff, mo_occ)
@@ -147,7 +148,7 @@ def _grad_elec_generalized(scf_grad, den_ao=None, etilde=None, v=None, Vinv=None
 
     fock_ao = scf.get_fock(dm=den_ao)
 
-    vhf = scf_grad.get_veff(mol, den_ao.real) + 1j * scf_grad.get_veff(mol, den_ao.imag)
+    vhf = _generalized_get_veff(scf_grad, mol, den_ao.real) + 1j * _generalized_get_veff(scf_grad, mol, den_ao.imag)
 
     atmlst = range(mol.natm)
     aoslices = mol.aoslice_by_atom()
@@ -156,17 +157,18 @@ def _grad_elec_generalized(scf_grad, den_ao=None, etilde=None, v=None, Vinv=None
         p0, p1 = aoslices[ia,2:]
 
         h1ao = hcore_deriv(ia)
-        de[k] += numpy.einsum('xij,sji->x', h1ao, den_ao.real)
+        de[k] += numpy.einsum('xij,ji->x', h1ao, den_ao.real)
 
-        de[k] += (numpy.einsum('sxij,sji->x', vhf.real[:,:,p0:p1,:], den_ao.real[:,:,p0:p1]) - numpy.einsum('sxij,sji->x', vhf.imag[:,:,p0:p1,:], den_ao.imag[:,:,p0:p1])) * 2
+        de[k] += (numpy.einsum('xij,ji->x', vhf.real[:,p0:p1,:], den_ao.real[:,p0:p1]) - numpy.einsum('xij,ji->x', vhf.imag[:,p0:p1,:], den_ao.imag[:,p0:p1])) * 2
 
         dStilde_bra = numpy.einsum('xik,kl->xil', numpy.einsum('ji,xjk->xik', v[p0:p1], dS[:,p0:p1]), v); dStilde_ket = numpy.einsum('xij->xji', dStilde_bra)
         dStilde = dStilde_bra + dStilde_ket
         dVtilde = numpy.einsum('ij,xij->xij', etilde, dStilde)
         dV = numpy.einsum('xik,lk->xil', numpy.einsum('ij,xjk->xik', v, dVtilde), v)
         VinvdV = numpy.einsum('ij,xjk->xik', Vinv, dV)
-        PF = numpy.einsum('sij,sjk->ik', den_ao, fock_ao)
-        de[k] += -2 * numpy.einsum('xij,ji->x', VinvdV, PF).real
+        PF = numpy.einsum('ij,jk->ik', den_ao, fock_ao)
+        PFij = PF[:nao,:nao] + PF[nao:,nao:]
+        de[k] += -2 * numpy.einsum('xij,ji->x', VinvdV, PFij).real
 
     if scf_grad.mol.symmetry:
         de = scf_grad.symmetrize(de, atmlst)
@@ -175,7 +177,26 @@ def _grad_elec_generalized(scf_grad, den_ao=None, etilde=None, v=None, Vinv=None
 
     return de
 
+def _generalized_hcore_generator(mf_grad, mol): 
+    hcore_deriv = grad.rhf.hcore_generator(mf_grad, mol)
+    def _generalized_hcore_deriv(atm_id):
+        h1ao = hcore_deriv(atm_id)
+        _generalized_h1ao = numpy.block([[h1ao, numpy.zeros_like(h1ao)], [numpy.zeros_like(h1ao), h1ao]])
+        return _generalized_h1ao
+    return _generalized_hcore_deriv
 
+def _generalized_get_veff(mf_grad, mol, dm):
+    nao = mol.nao
+    veff = numpy.zeros((3, 2 * nao, 2 * nao), dtype=numpy.float64)
+    vjaa, vkaa = mf_grad.get_jk(mol, dm[:nao,:nao])
+    vjab, vkab = mf_grad.get_jk(mol, dm[:nao,nao:])
+    vjba, vkba = mf_grad.get_jk(mol, dm[nao:,:nao])
+    vjbb, vkbb = mf_grad.get_jk(mol, dm[nao:,nao:])
+    veff[:,:nao,:nao] = vjaa + vjbb - vkaa
+    veff[:,:nao,nao:] = -vkab
+    veff[:,nao:,:nao] = -vkba
+    veff[:,nao:,nao:] = vjaa + vjbb - vkbb
+    return veff
 
 def _grad_lowdin(mol):
     '''

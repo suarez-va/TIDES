@@ -69,6 +69,9 @@ class RT_Ehrenfest(RT_SCF):
         self._scf.reset(self.nuc.get_mol())
         self._scf.verbose = 0
         self.ovlp = self._scf.get_ovlp()
+        # Generalized overlap is just stacks the restricted overlap, becomes an issue for gradients
+        # As temporary hard fix, going to set ovlp 
+        #self.ovlp = self._scf.mol.intor_symmetric('int1e_ovlp')
         self.evals, self.evecs = np.linalg.eigh(self.ovlp)
         self.orth = _sym_orth(self)
 
