@@ -1,39 +1,29 @@
+import pytest
+from pathlib import Path
 from pyscf import gto, scf, dft
-from tides import rt_scf, rt_vapp
+from tides import rt_scf, rt_vapp, parse_rt
 from tides.staticfield import static_bfield
 
-'''
-Hydrogen Atom in a static B-Field
-Recreated from https://doi.org/10.1063/1.4902884
-'''
+dir_path = str(Path(__file__).resolve().parent)
 
+def test_h_bfield():
+    # same calculation as TIDES/examples/H_BField
+    mag_z = 0.000085
+    mol = gto.M(
+    	verbose = 0,
+    	atom='H 0 0 0',
+    	basis='STO-3G',
+        spin = 1)
+    mf = scf.ghf.GHF(mol)
+    mf.kernel()
+    static_bfield(mf, [0,0,mag_z])
+    rt_mf = rt_scf.RT_SCF(mf, 1.0, 25, filename = dir_path + '/output.out')
+    rt_mf.prop = 'magnus_step' 
+    rt_mf.observables.update(mag=True)
+    rt_mf.kernel()
+    # parse data for comparison
+    data = parse_rt.parse_output(dir_path + '/output.out')
+    data_ref = parse_rt.parse_output(dir_path + '/output.ref')
+    # final magy equal to 8 digits
+    assert round(data['mag'][-1,1], 8) == round(data_ref['mag'][-1,1], 8)
 
-mag_z = 0.000085 # in au
-
-# Build mol
-mol = gto.M(
-	verbose = 0,
-	atom='H 0 0 0',
-	basis='STO-3G',
-    spin = 1)
-
-# Build and run GHF object
-mf = scf.ghf.GHF(mol)
-mf.kernel()
-
-# Add BField (this overwrites the hcore)
-static_bfield(mf, [0,0,mag_z])
-
-# Create RT_SCF object
-rt_mf = rt_scf.RT_SCF(mf, 1.0, 25, filename='output.out')
-
-# Specify propagator
-rt_mf.prop = 'magnus_step' 
-# In virtually all cases, the default 'magnus_interpol' is a more robust integrator. 
-# However the magnus_step (or MMUT) integrator is what was used in the original paper
-
-# Declare observables, in our case we only care about the magnetization
-rt_mf.observables.update(mag=True)
-
-# Start propagation
-rt_mf.kernel()

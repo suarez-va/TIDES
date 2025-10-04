@@ -22,7 +22,6 @@ def get_force(rt_ehrenfest):
         grad_elec = _grad_elec_unrestricted(rt_ehrenfest._grad, rt_ehrenfest.den_ao, etilde, v, Vinv)
     elif rt_ehrenfest._scf.istype('GHF'):
         grad_elec = _grad_elec_generalized(rt_ehrenfest._grad, rt_ehrenfest.den_ao, etilde, v, Vinv)
-        #raise Exception('Generalized Gradients Not Yet Implemented')
     return -(grad_nuc + grad_elec)
 
 def _grad_elec_restricted(scf_grad, den_ao=None, etilde=None, v=None, Vinv=None):
@@ -95,7 +94,6 @@ def _grad_elec_unrestricted(scf_grad, den_ao=None, etilde=None, v=None, Vinv=Non
 
     fock_ao = scf.get_fock(dm=den_ao)
 
-    # It's not clear if the imaginary part is contracted correctly at the moment.
     vhf = scf_grad.get_veff(mol, den_ao.real) + 1j * scf_grad.get_veff(mol, den_ao.imag)
 
     atmlst = range(mol.natm)
@@ -107,7 +105,6 @@ def _grad_elec_unrestricted(scf_grad, den_ao=None, etilde=None, v=None, Vinv=Non
         h1ao = hcore_deriv(ia)
         de[k] += numpy.einsum('xij,sji->x', h1ao, den_ao.real)
 
-        # You should just have the contraction done in 1 einsum over the complex terms, time tests, make sure imag part 0
         de[k] += (numpy.einsum('sxij,sji->x', vhf.real[:,:,p0:p1,:], den_ao.real[:,:,p0:p1]) - numpy.einsum('sxij,sji->x', vhf.imag[:,:,p0:p1,:], den_ao.imag[:,:,p0:p1])) * 2
 
         dStilde_bra = numpy.einsum('xik,kl->xil', numpy.einsum('ji,xjk->xik', v[p0:p1], dS[:,p0:p1]), v); dStilde_ket = numpy.einsum('xij->xji', dStilde_bra)
@@ -128,7 +125,6 @@ def _grad_elec_unrestricted(scf_grad, den_ao=None, etilde=None, v=None, Vinv=Non
 def _grad_elec_generalized(scf_grad, den_ao=None, etilde=None, v=None, Vinv=None):
     '''
     Electronic part of GHF/GKS gradients for complex densities
-    NOTE THAT THIS IS NOT EVEN CLOSE TO READY!
     '''
 
     scf = scf_grad.base
@@ -140,7 +136,7 @@ def _grad_elec_generalized(scf_grad, den_ao=None, etilde=None, v=None, Vinv=None
     if etilde is None or v is None or Vinv is None: etilde, v, Vinv = _grad_lowdin(mol)
 
     hcore_deriv = _generalized_hcore_generator(scf_grad, mol)
-    dS = scf_grad.get_ovlp()
+    dS = _generalized_get_ovlp(mol)
 
     if den_ao is None: den_ao = scf.make_rdm1(mo_coeff, mo_occ)
     if den_ao.dtype != numpy.complex128:
@@ -160,15 +156,17 @@ def _grad_elec_generalized(scf_grad, den_ao=None, etilde=None, v=None, Vinv=None
         de[k] += numpy.einsum('xij,ji->x', h1ao, den_ao.real)
 
         de[k] += (numpy.einsum('xij,ji->x', vhf.real[:,p0:p1,:], den_ao.real[:,p0:p1]) - numpy.einsum('xij,ji->x', vhf.imag[:,p0:p1,:], den_ao.imag[:,p0:p1])) * 2
+        de[k] += (numpy.einsum('xij,ji->x', vhf.real[:,p0+nao:p1+nao,:], den_ao.real[:,p0+nao:p1+nao]) - numpy.einsum('xij,ji->x', vhf.imag[:,p0+nao:p1+nao,:], den_ao.imag[:,p0+nao:p1+nao])) * 2
 
-        dStilde_bra = numpy.einsum('xik,kl->xil', numpy.einsum('ji,xjk->xik', v[p0:p1], dS[:,p0:p1]), v); dStilde_ket = numpy.einsum('xij->xji', dStilde_bra)
+        dStilde_bra = numpy.einsum('xik,kl->xil', numpy.einsum('ji,xjk->xik', v[p0:p1], dS[:,p0:p1]), v)
+        dStilde_bra += numpy.einsum('xik,kl->xil', numpy.einsum('ji,xjk->xik', v[p0+nao:p1+nao], dS[:,p0+nao:p1+nao]), v)
+        dStilde_ket = numpy.einsum('xij->xji', dStilde_bra)
         dStilde = dStilde_bra + dStilde_ket
         dVtilde = numpy.einsum('ij,xij->xij', etilde, dStilde)
         dV = numpy.einsum('xik,lk->xil', numpy.einsum('ij,xjk->xik', v, dVtilde), v)
         VinvdV = numpy.einsum('ij,xjk->xik', Vinv, dV)
         PF = numpy.einsum('ij,jk->ik', den_ao, fock_ao)
-        PFij = PF[:nao,:nao] + PF[nao:,nao:]
-        de[k] += -2 * numpy.einsum('xij,ji->x', VinvdV, PFij).real
+        de[k] += -2 * numpy.einsum('xij,ji->x', VinvdV, PF).real
 
     if scf_grad.mol.symmetry:
         de = scf_grad.symmetrize(de, atmlst)
@@ -176,6 +174,10 @@ def _grad_elec_generalized(scf_grad, den_ao=None, etilde=None, v=None, Vinv=None
         de += scf_grad.get_dispersion()
 
     return de
+
+def _generalized_get_ovlp(mol): 
+    ds = grad.rhf.get_ovlp(mol)
+    return numpy.block([[ds, numpy.zeros_like(ds)], [numpy.zeros_like(ds), ds]])
 
 def _generalized_hcore_generator(mf_grad, mol): 
     hcore_deriv = grad.rhf.hcore_generator(mf_grad, mol)
