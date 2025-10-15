@@ -10,6 +10,6 @@ dependencies:
   - mdanalysis 
   - pip
   - pip:
-      - pyscf
-      - git+https://github.com/frobnitzem/hirshfeld
+       - pyscf
+       - git+https://github.com/frobnitzem/hirshfeld
 

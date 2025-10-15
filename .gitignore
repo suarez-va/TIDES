@@ -5,6 +5,7 @@ __pycache__/
 # Output files
 *.out
 *.xyz
+*.chk
 
 # C extensions
 *.so

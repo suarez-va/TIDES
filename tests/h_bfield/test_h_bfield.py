@@ -24,6 +24,6 @@ def test_h_bfield():
     # parse data for comparison
     data = parse_rt.parse_output(dir_path + '/output.out')
     data_ref = parse_rt.parse_output(dir_path + '/output.ref')
-    # final magy equal to 8 digits
+    # confirm final magy equal to 8 digits
     assert round(data['mag'][-1,1], 8) == round(data_ref['mag'][-1,1], 8)
 

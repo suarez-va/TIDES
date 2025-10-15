@@ -22,7 +22,8 @@ def propagate(rt_scf, mo_coeff_print):
         if not hasattr(rt_scf, 'magnus_maxiter'): rt_scf.magnus_maxiter = 15
 
     # Start propagation
-    for i in range(0, int(rt_scf.max_time / rt_scf.timestep)):
+    #for i in range(0, int(rt_scf.max_time / rt_scf.timestep)):
+    for i in range(0, int((rt_scf.max_time - rt_scf._t0) / rt_scf.timestep)): # So calculation terminates once max_time is reached after restarts
         if np.mod(i, rt_scf.frequency) == 0:
             rt_observables.get_observables(rt_scf)
             if rt_scf.chkfile is not None:

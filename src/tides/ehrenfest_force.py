@@ -1,11 +1,14 @@
 import numpy
+import copy
 import ctypes
-from pyscf import gto, scf, grad
+from pyscf import gto, scf, dft, grad
 from pyscf import lib
 from pyscf.lib import logger
 from pyscf.scf import hf, _vhf
 from pyscf.gto.mole import is_au
+from pyscf.dft import numint
 from scipy.linalg import fractional_matrix_power
+
 
 def get_force(rt_ehrenfest):
     rt_ehrenfest._update_grad()
@@ -187,17 +190,63 @@ def _generalized_hcore_generator(mf_grad, mol):
         return _generalized_h1ao
     return _generalized_hcore_deriv
 
+#this version works for GHF but not GKS
+#def _generalized_get_veff(mf_grad, mol, dm):
+#    nao = mol.nao
+#    veff = numpy.zeros((3, 2 * nao, 2 * nao), dtype=numpy.float64)
+#    vjaa, vkaa = mf_grad.get_jk(mol, dm[:nao,:nao])
+#    vjab, vkab = mf_grad.get_jk(mol, dm[:nao,nao:])
+#    vjba, vkba = mf_grad.get_jk(mol, dm[nao:,:nao])
+#    vjbb, vkbb = mf_grad.get_jk(mol, dm[nao:,nao:])
+#    veff[:,:nao,:nao] = vjaa + vjbb - vkaa
+#    veff[:,:nao,nao:] = -vkab
+#    veff[:,nao:,:nao] = -vkba
+#    veff[:,nao:,nao:] = vjaa + vjbb - vkbb
+#    return veff
+
 def _generalized_get_veff(mf_grad, mol, dm):
+    #mf = copy.deepcopy(mf_grad.base)
+    mf = mf_grad.base
     nao = mol.nao
+    Paa = dm[:nao,:nao]
+    Pbb = dm[nao:,nao:]
+    Pab = dm[:nao,nao:]
+    Pba = dm[nao:,:nao]
     veff = numpy.zeros((3, 2 * nao, 2 * nao), dtype=numpy.float64)
-    vjaa, vkaa = mf_grad.get_jk(mol, dm[:nao,:nao])
-    vjab, vkab = mf_grad.get_jk(mol, dm[:nao,nao:])
-    vjba, vkba = mf_grad.get_jk(mol, dm[nao:,:nao])
-    vjbb, vkbb = mf_grad.get_jk(mol, dm[nao:,nao:])
-    veff[:,:nao,:nao] = vjaa + vjbb - vkaa
-    veff[:,:nao,nao:] = -vkab
-    veff[:,nao:,:nao] = -vkba
-    veff[:,nao:,nao:] = vjaa + vjbb - vkbb
+    if mf.istype('GKS'):
+        umf = dft.uks.UKS(mol)
+        umf.xc = mf.xc
+        if hasattr(mf._numint, "omega"):
+            umf._numint.omega = mf._numint.omega
+        if hasattr(mf._numint, "alpha"):
+            umf._numint.alpha = mf._numint.alpha
+        if hasattr(mf._numint, "beta"):
+            umf._numint.beta = mf._numint.beta
+        umf_grad = umf.apply(grad.UKS)
+        umf_veff = umf_grad.get_veff(mol, [Paa,Pbb])
+        ni = umf_grad.base._numint
+        if ni.libxc.is_hybrid_xc(umf.xc):
+            omega, alpha, hyb = ni.rsh_and_hybrid_coeff(umf.xc, spin=mol.spin)
+            vkab = umf_grad.get_k(mol, Pab) * hyb
+            vkba = umf_grad.get_k(mol, Pba) * hyb
+            if omega != 0:
+                vkab += umf_grad.get_k(mol, Pab, omega=omega) * (alpha - hyb)
+                vkba += umf_grad.get_k(mol, Pba, omega=omega) * (alpha - hyb)
+            veff[:,:nao,nao:] = -vkab
+            veff[:,nao:,:nao] = -vkba
+        veff[:,:nao,:nao] = umf_veff[0]
+        veff[:,nao:,nao:] = umf_veff[1]
+    elif mf.istype('GHF'):
+        umf = scf.uhf.UHF(mol)
+        umf_grad = umf.apply(grad.UHF)
+        umf_veff = umf_grad.get_veff(mol, [Paa,Pbb])
+        vkab = umf_grad.get_k(mol, Pab)
+        vkba = umf_grad.get_k(mol, Pba)
+        veff[:,:nao,nao:] = -vkab
+        veff[:,nao:,:nao] = -vkba
+        veff[:,:nao,:nao] = umf_veff[0]
+        veff[:,nao:,nao:] = umf_veff[1]
+
     return veff
 
 def _grad_lowdin(mol):
