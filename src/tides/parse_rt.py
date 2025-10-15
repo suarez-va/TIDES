@@ -23,12 +23,12 @@ def parse_output(filename):
     mag = []
     hirsh_atom_mag = []
     mo_occ = []
-    coords = []
-    vels = []
     frag_charge = []
     alpha_energies = []
     beta_energies = []
-    
+    s2 = []
+    _2s_1 = []
+
     for idx, line in enumerate(lines):
         if 'Current Time' in line:
             time.append(get_time(line))
@@ -54,14 +54,14 @@ def parse_output(filename):
             mag.append(get_mag(line))
         if 'Hirshfeld Magnetization' in line:
             hirsh_atom_mag.append(get_atom_mag(lines[idx+1:idx+mol_length+1]))
-        if 'Nuclear Coordinates' in line:
-            coords.append(get_coords(lines[idx+1:idx+mol_length+1]))
-        if 'Nuclear Velocities' in line:
-            vels.append(get_vels(lines[idx+1:idx+mol_length+1]))
         if 'Molecular Orbital Energies (Alpha): ' in line:
             alpha_energies.append(get_mo_energy(line))
         if 'Molecular Orbital Energies (Beta): ' in line:
             beta_energies.append(get_mo_energy(line))
+        if 'S^2:' in line:
+            s2.append(get_spin_square(line))
+        if '2S+1:' in line:
+            _2s_1.append(get_spin_square(line))
 
     time = np.array(time)
     energy = np.array(energy)
@@ -74,11 +74,11 @@ def parse_output(filename):
     mag = np.array(mag)
     hirsh_atom_mag = np.array(hirsh_atom_mag)
     mo_occ = np.array(mo_occ)
-    coords = np.array(coords)
-    vels = np.array(vels)
     frag_charge = np.array(frag_charge).reshape([len(time), int(np.size(frag_charge) / len(time))])
     alpha_energies = np.array(alpha_energies)
     beta_energies = np.array(beta_energies)
+    s2 = np.array(s2)
+    _2s_1 = np.array(_2s_1)
     result = {
     'time': time,
     'energy': energy,
@@ -95,11 +95,11 @@ def parse_output(filename):
     'hirsh_mag': hirsh_atom_mag,
     'hirsh_atom_mag': hirsh_atom_mag,
     'mo_occ': mo_occ,
-    'coords': coords,
-    'vels': vels,
     'frag_charge': frag_charge,
     'alpha_energies': alpha_energies,
     'beta_energies': beta_energies,
+    'spin_square': s2,
+    '2S+1': _2s_1,
     }
     return result
 
@@ -153,29 +153,11 @@ def get_charge(line):
 def get_frag_charge(line):
     return float(line.split()[4])
 
-def get_coords(lines):
-    coords = []
-    for line in lines:
-        atom_coords = []
-        for i in range(1,4):
-            atom_coords.append(float(line.split()[i]))
-        coords.append(atom_coords)
-    return coords
-
 def get_atom_charge(lines):
     charges = []
     for line in lines:
         charges.append(float(line.split()[1]))
     return charges
-
-def get_vels(lines):
-    vels = []
-    for line in lines:
-        atom_vels = []
-        for i in range(1,4):
-            atom_vels.append(float(line.split()[i]))
-        vels.append(atom_vels)
-    return vels
 
 def get_length(coords, atoms):
     # Gets length between 2 atoms
@@ -186,3 +168,6 @@ def get_length(coords, atoms):
         dx, dy, dz = dist_3d[0], dist_3d[1], dist_3d[2]
         lens.append(np.sqrt(dx ** 2 + dy ** 2 + dz ** 2))
     return lens
+
+def get_spin_square(line):
+    return float(line.split()[1])
