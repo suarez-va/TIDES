@@ -209,11 +209,11 @@ def get_mo_occ(rt_scf, den_ao):
     # P_mo = C+SP_aoSC
     SP_aoS = np.matmul(rt_scf.ovlp,np.matmul(den_ao,rt_scf.ovlp))
     if rt_scf.nmat == 2:
-        mo_coeff_print_transpose = np.stack((rt_scf.mo_coeff_print[0].T, rt_scf.mo_coeff_print[1].T))
+        mo_coeff_print_transpose = np.stack((rt_scf.mo_coeff_print[0].T.conj(), rt_scf.mo_coeff_print[1].T.conj()))
         den_mo = np.matmul(mo_coeff_print_transpose,np.matmul(SP_aoS,rt_scf.mo_coeff_print))
         den_mo = np.real(np.sum(den_mo,axis=0))
     else:
-        den_mo = np.matmul(rt_scf.mo_coeff_print.T, np.matmul(SP_aoS,rt_scf.mo_coeff_print))
+        den_mo = np.matmul(rt_scf.mo_coeff_print.T.conj(), np.matmul(SP_aoS,rt_scf.mo_coeff_print))
         den_mo = np.real(den_mo)
 
     rt_scf._mo_occ = np.diagonal(den_mo)
