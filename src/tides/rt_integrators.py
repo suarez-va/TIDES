@@ -54,8 +54,8 @@ def magnus_interpol(rt_scf):
         rt_scf.current_time -= rt_scf.timestep
 
         if (iteration > 0 and
-        abs(np.linalg.norm(mo_coeff_ao_pdt)
-        - np.linalg.norm(mo_coeff_ao_pdt_old)) < rt_scf.magnus_tolerance):
+        abs(np.linalg.norm(den_ao_pdt)
+        - np.linalg.norm(den_ao_pdt_old)) < rt_scf.magnus_tolerance):
 
             rt_scf._scf.mo_coeff = mo_coeff_ao_pdt
             rt_scf.den_ao = den_ao_pdt
@@ -64,10 +64,14 @@ def magnus_interpol(rt_scf):
             break
         fock_orth_p12dt = 0.5 * (rt_scf._fock_orth + fock_orth_pdt)
 
-        mo_coeff_ao_pdt_old = mo_coeff_ao_pdt
-
+        den_ao_pdt_old = np.copy(den_ao_pdt)
         rt_scf._scf.mo_coeff = mo_coeff_ao_pdt
         rt_scf.den_ao = den_ao_pdt
+
+    if (abs(np.linalg.norm(den_ao_pdt) - np.linalg.norm(den_ao_pdt_old)) 
+    > rt_scf.magnus_tolerance):
+        rt_scf._log.error('Magnus integrator failed to converge. Increase magnus_maxiter, or decrease timestep.')
+    rt_scf._log.debug1(f'Time step converged on Magnus interation: {iteration}')
     rt_scf._fock_orth = fock_orth_pdt
     rt_scf._fock_orth_n12dt = fock_orth_p12dt
 
