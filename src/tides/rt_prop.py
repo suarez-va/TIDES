@@ -18,8 +18,8 @@ def propagate(rt_scf, mo_coeff_print):
         rt_scf.mo_coeff_orth_old = rt_scf.rotate_coeff_to_orth(rt_scf._scf.mo_coeff)
     if rt_scf.prop == 'magnus_interpol':
         rt_scf._fock_orth_n12dt = np.copy(rt_scf._fock_orth)
-        if not hasattr(rt_scf, 'magnus_tolerance'): rt_scf.magnus_tolerance = 1e-7
-        if not hasattr(rt_scf, 'magnus_maxiter'): rt_scf.magnus_maxiter = 15
+        if not hasattr(rt_scf, 'magnus_tolerance'): rt_scf.magnus_tolerance = 1e-8
+        if not hasattr(rt_scf, 'magnus_maxiter'): rt_scf.magnus_maxiter = 200
 
     # Start propagation
     for i in range(0, int(rt_scf.max_time / rt_scf.timestep)):
