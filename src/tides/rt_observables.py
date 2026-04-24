@@ -163,7 +163,7 @@ def get_mulliken_charge(rt_scf, den_ao):
             rt_scf._atom_charges.append(np.trace(np.sum(np.matmul(den_ao,rt_scf.ovlp)[atom_mask], axis=0)))
     else:
         for idx, label in enumerate(rt_scf._scf.mol._atom):
-            atom_mask = mask_fragment_basis(rt_scf._scf, [idx])
+            atom_mask = _mask_fragment_basis(rt_scf._scf, [idx])
             rt_scf._atom_charges.append(np.trace(np.matmul(den_ao,rt_scf.ovlp)[atom_mask]))
 
 def get_hirshfeld_charge(rt_scf, den_ao):
