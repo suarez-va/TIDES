@@ -55,22 +55,49 @@ def get_noscf_orbitals(rt_ehrenfest):
         frag.match_indices = frag_indices
     rt_ehrenfest.mo_coeff_print = noscfbasis(rt_ehrenfest._scf, *rt_ehrenfest.fragments)
 
+# Previous version of restart_from_chkfile()
+#def restart_from_chkfile(rt_scf):
+#    rt_scf._log.note(f'### Restarting from chkfile: {rt_scf.chkfile} ###\n')
+#    with open(rt_scf.chkfile, 'r') as f:
+#        chk_lines = f.readlines()
+#        rt_scf.current_time = float(chk_lines[0].split()[3])
+#        if rt_scf.nmat == 1:
+#            rt_scf._scf.mo_coeff = np.loadtxt(chk_lines[2:], dtype=np.complex128)
+#        else:
+#            for idx, line in enumerate(chk_lines):
+#                if 'Beta' in line:
+#                    b0 = idx
+#                    break
+#
+#            mo_alpha0 = np.loadtxt(chk_lines[3:b0], dtype=np.complex128)
+#            mo_beta0 = np.loadtxt(chk_lines[b0+1:], dtype=np.complex128)
+#            rt_scf._scf.mo_coeff = np.stack((mo_alpha0, mo_beta0))
+
 def restart_from_chkfile(rt_scf):
     rt_scf._log.note(f'### Restarting from chkfile: {rt_scf.chkfile} ###\n')
     with open(rt_scf.chkfile, 'r') as f:
         chk_lines = f.readlines()
         rt_scf.current_time = float(chk_lines[0].split()[3])
+        if 'Position (AU): \n' in chk_lines:
+            b1 = chk_lines.index('Position (AU): \n')
+            b2 = chk_lines.index('Velocity (AU): \n')
+            b3 = chk_lines.index('Force (AU): \n')
+        else:
+            b1 = None
         if rt_scf.nmat == 1:
-            rt_scf._scf.mo_coeff = np.loadtxt(chk_lines[2:], dtype=np.complex128)
+            rt_scf._scf.mo_coeff = np.loadtxt(chk_lines[2:b1], dtype=np.complex128)
         else:
             for idx, line in enumerate(chk_lines):
                 if 'Beta' in line:
                     b0 = idx
                     break
-
             mo_alpha0 = np.loadtxt(chk_lines[3:b0], dtype=np.complex128)
-            mo_beta0 = np.loadtxt(chk_lines[b0+1:], dtype=np.complex128)
+            mo_beta0 = np.loadtxt(chk_lines[b0+1:b1], dtype=np.complex128)
             rt_scf._scf.mo_coeff = np.stack((mo_alpha0, mo_beta0))
+        if hasattr(rt_scf, "nuc") and b1 is not None:
+            rt_scf.nuc.pos = np.loadtxt(chk_lines[b1+1:b2], dtype=np.float64)
+            rt_scf.nuc.vel = np.loadtxt(chk_lines[b2+1:b3], dtype=np.float64)
+            rt_scf.nuc.force = np.loadtxt(chk_lines[b3+1:], dtype=np.float64)
 
 def update_chkfile(rt_scf):
     with open(rt_scf.chkfile, 'w') as f:
@@ -82,6 +109,13 @@ def update_chkfile(rt_scf):
             np.savetxt(f, rt_scf._scf.mo_coeff[0])
             f.write('Beta \n')
             np.savetxt(f, rt_scf._scf.mo_coeff[1])
+        if rt_scf.istype('RT_Ehrenfest'):
+            f.write('Position (AU): \n')
+            np.savetxt(f, rt_scf.nuc.pos)
+            f.write('Velocity (AU): \n')
+            np.savetxt(f, rt_scf.nuc.vel)
+            f.write('Force (AU): \n')
+            np.savetxt(f, rt_scf.nuc.force)
 
 def print_info(rt_scf, mo_coeff_print):
     rt_scf._log.note(f'{"=" * 25} \nBeginning Propagation For: \n')
