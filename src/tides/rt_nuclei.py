@@ -1,5 +1,5 @@
 import numpy as np
-from pyscf import gto, dft, scf
+from pyscf import gto, dft, scf, data
 from tides.basis_utils import _read_mol, _write_mol
 
 '''
@@ -11,7 +11,8 @@ class Nuc:
         self._nnuc = len(mol._atom)
         self.basis, self.labels, pos = _read_mol(mol)
         self.pos = np.array(pos)
-        self.mass = 1836 * np.array([np.array(mol.atom_mass_list())[i] * np.ones(3) for i in range(self._nnuc)])
+        #self.mass = 1836 * np.array([np.array(mol.atom_mass_list())[i] * np.ones(3) for i in range(self._nnuc)])
+        self.mass = np.array([np.array([data.elements.COMMON_ISOTOPE_MASSES[m] * data.nist.AMU2AU for m in mol.atom_charges()])[i] * np.ones(3) for i in range(self._nnuc)])
         self.vel = np.zeros((self._nnuc, 3))
         self.force = np.zeros((self._nnuc, 3))
         self.spin = mol.spin
@@ -24,7 +25,6 @@ class Nuc:
         return np.sum(0.5 * self.mass * self.vel**2, axis=1)
 
     def sample_vel(self, beta):
-        #np.random.seed(47)
         self.vel = np.random.normal(scale = 1. / np.sqrt(beta * self.mass))
 
     # Position full step
