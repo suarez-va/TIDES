@@ -201,7 +201,7 @@ def print_info(rt_scf, mo_coeff_print):
         if rt_scf.observables[obs]:
             rt_scf._log.note(f' \t \t {obs}')
     
-    if rt_scf.observables['mo_occ']:
+    if rt_scf.observables['mo_occ'] or rt_scf.observables['mo_occ_separate']:
         if mo_coeff_print is None:
             if hasattr(rt_scf, 'mo_coeff_print'):
                 rt_scf._log.note('\n\tPrinting molecular orbital occupations in the basis of self.mo_coeff_print\n')
