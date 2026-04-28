@@ -103,10 +103,13 @@ ethylene_x4.xc = 'CAMB3LYP'
 ethylene_x4.kernel()
 
 
-ethylene_x4.mo_coeff = basis_utils.noscfbasis(ethylene_x4,e1,e2,e3,e4)
+noscf_orbitals = basis_utils.noscfbasis(ethylene_x4,e1,e2,e3,e4)
+ethylene_x4.mo_coeff = noscf_orbitals
+np.savetxt('NOSCF_ORBITALS_ALPHA.txt', noscf_orbitals[0])
+np.savetxt('NOSCF_ORBITALS_BETA.txt', noscf_orbitals[1])
 
-rt_ethylene_x4 = rt_scf.RT_SCF(ethylene_x4, 0.5, 2500)
-rt_ethylene_x4.observables.update(hirsh_charge=True, mulliken_atom_charge=True)
+rt_ethylene_x4 = rt_scf.RT_SCF(ethylene_x4, 0.5, 500)
+rt_ethylene_x4.observables.update(energy=True, hirsh_charge=True, mulliken_atom_charge=True, mo_occ_separate=True)
 rt_utils.input_fragments(rt_ethylene_x4, e1, e2, e3, e4)
 
 rt_ethylene_x4.kernel()

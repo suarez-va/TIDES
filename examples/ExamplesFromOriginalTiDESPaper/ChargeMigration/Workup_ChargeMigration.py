@@ -25,6 +25,8 @@ def EthyleneStack():
     result = parse_output(filename)
     time = result['time']
     hirsh_charges = result['hirsh_charge']
+    mo_occ_alpha = result['mo_occ_alpha']
+    mo_occ_beta = result['mo_occ_beta']
     a_charge = hirsh_charges[:,:6].sum(axis=1)
     b_charge = hirsh_charges[:,6:12].sum(axis=1)
     c_charge = hirsh_charges[:,12:18].sum(axis=1)
