@@ -19,7 +19,7 @@ def magnus_step(rt_scf):
     u = expm(-1j*2*rt_scf.timestep*fock_orth)
 
     mo_coeff_orth_new = np.matmul(u, rt_scf.mo_coeff_orth_old)
-    
+
     rt_scf.mo_coeff_orth_old = rt_scf.rotate_coeff_to_orth(rt_scf._scf.mo_coeff)
     rt_scf._scf.mo_coeff = rt_scf.rotate_coeff_to_ao(mo_coeff_orth_new)
     rt_scf.den_ao = rt_scf._scf.make_rdm1(mo_occ=rt_scf.occ)
@@ -38,7 +38,7 @@ def magnus_interpol(rt_scf):
 
     mo_coeff_orth = rt_scf.rotate_coeff_to_orth(rt_scf._scf.mo_coeff)
     fock_orth_p12dt = 2 * rt_scf._fock_orth - rt_scf._fock_orth_n12dt
-    
+
     # Update time, mol is updated here if rt_scf is an Ehrenfest obj
     rt_scf.update_time()
 
@@ -49,9 +49,9 @@ def magnus_interpol(rt_scf):
         mo_coeff_ao_pdt = rt_scf.rotate_coeff_to_ao(mo_coeff_orth_pdt)
         den_ao_pdt = rt_scf._scf.make_rdm1(mo_coeff=mo_coeff_ao_pdt,
                                           mo_occ=rt_scf.occ)
-        rt_scf.current_time += rt_scf.timestep
+        #rt_scf.current_time += rt_scf.timestep
         fock_orth_pdt = rt_scf.get_fock_orth(den_ao_pdt)
-        rt_scf.current_time -= rt_scf.timestep
+        #rt_scf.current_time -= rt_scf.timestep
 
         if (iteration > 0 and
         abs(np.linalg.norm(den_ao_pdt)

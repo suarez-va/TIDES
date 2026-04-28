@@ -38,7 +38,7 @@ class RT_Ehrenfest(RT_SCF):
         elif self._scf.istype('UHF'): self._grad_func = grad.UHF
         elif self._scf.istype('GKS'): self._grad_func = grad.UKS # grad.GKS doesn't exist
         elif self._scf.istype('GHF'): self._grad_func = grad.UHF # grad.GHF doesn't exist
-        
+
         # Reminder to check if forces should be updated again after excite()
         self.nuc.force = ehrenfest_force.get_force(self)
 
@@ -48,7 +48,7 @@ class RT_Ehrenfest(RT_SCF):
             self.get_mo_coeff_print = get_mo_coeff_print
 
     def update_time(self):
-        current_N = np.mod(int(self.current_time / self.timestep), self.Ne_step * self.N_step)
+        current_N = np.mod(round(self.current_time / self.timestep), self.Ne_step * self.N_step)
         current_Ne = np.mod(current_N, self.Ne_step)
         if current_N == 0: # k = 0, j = 0
             self.nuc.update_vel(0.5 * self.N_step * self.Ne_step * self.timestep)
@@ -66,7 +66,7 @@ class RT_Ehrenfest(RT_SCF):
             self.update_mol()
 
         self.current_time += self.timestep
-   
+
     def update_force(self):
         self.nuc.update_vel(-0.5 * self.N_step * self.Ne_step * self.timestep)
         self.nuc.force = ehrenfest_force.get_force(self)
