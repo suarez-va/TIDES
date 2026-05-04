@@ -27,6 +27,7 @@ def _init_observables(rt_scf):
         'hirsh_mag'            : False,
         'hirsh_atom_mag'       : False,
         'mo_occ'               : False,
+        'mo_occ_separate'      : False,
         'nuclei'               : False,
         'cube_density'         : False,
         'spin_square'          : False,
@@ -48,6 +49,7 @@ def _init_observables(rt_scf):
         'hirsh_mag'            : [get_hirshfeld_mag, rt_output._print_hirshfeld_mag],
         'hirsh_atom_mag'       : [get_hirshfeld_mag, rt_output._print_hirshfeld_mag],
         'mo_occ'               : [get_mo_occ, rt_output._print_mo_occ],
+        'mo_occ_separate'      : [get_mo_occ_separate, rt_output._print_mo_occ_separate],
         'nuclei'               : [get_nuclei, rt_output._print_nuclei],
         'cube_density'         : [get_cube_density, lambda *args: None],
         'spin_square'          : [get_spin_square, rt_output._print_spin_square],
@@ -73,6 +75,10 @@ def _check_observables(rt_scf):
     ### For whatever reason, the dip_moment call for GHF and GKS has arg name 'unit_symbol' instead of 'unit'
     if rt_scf._scf.istype('GHF') | rt_scf._scf.istype('GKS'):
         rt_scf._observables_functions['dipole'][0] = _temp_get_dipole
+
+    # mo_occ_separate should be used for spin unrestricted when use wants to know specifically alpha vs. beta occupations
+    if rt_scf.observables['mo_occ_separate']:
+        assert rt_scf._scf.istype('UHF') | rt_scf._scf.istype('UKS')
 
     # If we are printing nuclei, we must be a RT_Ehrenfest object
     if rt_scf.observables['nuclei']:
@@ -120,7 +126,7 @@ def _check_observables(rt_scf):
 
 def get_observables(rt_scf):
     if rt_scf.istype('RT_Ehrenfest'):
-        if 'mo_occ' in rt_scf.observables:
+        if 'mo_occ' in rt_scf.observables or 'mo_occ_separate' in rt_scf.observables:
             _update_mo_coeff_print(rt_scf)
         if rt_scf.hirshfeld:
             rt_scf.grids, rt_scf.atom_weights = get_weights(rt_scf._scf.mol)
@@ -163,7 +169,7 @@ def get_mulliken_charge(rt_scf, den_ao):
             rt_scf._atom_charges.append(np.trace(np.sum(np.matmul(den_ao,rt_scf.ovlp)[atom_mask], axis=0)))
     else:
         for idx, label in enumerate(rt_scf._scf.mol._atom):
-            atom_mask = mask_fragment_basis(rt_scf._scf, [idx])
+            atom_mask = _mask_fragment_basis(rt_scf._scf, [idx])
             rt_scf._atom_charges.append(np.trace(np.matmul(den_ao,rt_scf.ovlp)[atom_mask]))
 
 def get_hirshfeld_charge(rt_scf, den_ao):
@@ -217,6 +223,15 @@ def get_mo_occ(rt_scf, den_ao):
         den_mo = np.real(den_mo)
 
     rt_scf._mo_occ = np.diagonal(den_mo)
+
+def get_mo_occ_separate(rt_scf, den_ao):
+    # P_mo = C+SP_aoSC
+    SP_aoS = np.matmul(rt_scf.ovlp,np.matmul(den_ao,rt_scf.ovlp))
+    mo_coeff_print_transpose = np.stack((rt_scf.mo_coeff_print[0].T.conj(), rt_scf.mo_coeff_print[1].T.conj()))
+    den_mo = np.matmul(mo_coeff_print_transpose,np.matmul(SP_aoS,rt_scf.mo_coeff_print))
+    den_mo = np.real(den_mo)
+
+    rt_scf._mo_occ_separate = [np.diagonal(den_mo[0]), np.diagonal(den_mo[1])]
 
 def get_nuclei(rt_scf, den_ao):
     rt_scf._nuclei = [rt_scf.nuc.labels, rt_scf.nuc.pos*lib.param.BOHR, rt_scf.nuc.vel*lib.param.BOHR, rt_scf.nuc.force]
