@@ -37,7 +37,6 @@ def get_results(filename):
     dist = get_length(positions, [1,2])
     return time, dist
 
-
 time0_G, _0ev_G = get_results('6-31G/0eV/trajectory.xyz')
 time1_G, _1ev_G = get_results('6-31G/1eV/trajectory.xyz')
 time2_G, _2ev_G = get_results('6-31G/2eV/trajectory.xyz')
@@ -85,4 +84,37 @@ def Cl2_Dissociation():
 
     plt.savefig('Cl2_Dissociation.png', bbox_inches='tight')
 
+def Cl2_Energy_Conservation():
+
+    result_11 = parse_output('Energy_Conservation/Nn1Nf1/cl2.out')
+    result_12 = parse_output('Energy_Conservation/Nn1Nf2/cl2.out')
+    result_21 = parse_output('Energy_Conservation/Nn2Nf1/cl2.out')
+    result_22 = parse_output('Energy_Conservation/Nn2Nf2/cl2.out')
+
+    time_11, energy_11 = result_11['time'], result_11['energy']
+    time_12, energy_12 = result_12['time'], result_12['energy']
+    time_21, energy_21 = result_21['time'], result_21['energy']
+    time_22, energy_22 = result_22['time'], result_22['energy']
+
+    fig, axs = plt.subplots(1,1, figsize=(3.36, 2.52), dpi=600, sharex=True)
+    axs.grid(True)
+    axs.tick_params(labelsize=8, which='both',direction='in', top=True, right=True)
+    axs.plot(time_22 / 41.34, (energy_22 - energy_22[0]) * 627.51, linewidth=1.5, c='g', label=r'$N_n$ = 2; $N_f$ = 2')
+    axs.plot(time_21 / 41.34, (energy_21 - energy_21[0]) * 627.51, linewidth=1.5, c='r', label=r'$N_n$ = 2; $N_f$ = 1')
+    axs.plot(time_12 / 41.34, (energy_12 - energy_12[0]) * 627.51, linewidth=1.5, c='b', label=r'$N_n$ = 1; $N_f$ = 2')
+    axs.plot(time_11 / 41.34, (energy_11 - energy_11[0]) * 627.51, linewidth=1.5, c='k', label=r'$N_n$ = 1; $N_f$ = 1')
+
+    axs.xaxis.set_major_locator(MultipleLocator(40))
+    axs.yaxis.set_major_locator(MultipleLocator(0.002))
+    axs.set_xlabel('Time (fs)', fontsize=12)
+    axs.set_ylabel('Energy (kcal/mol)', fontsize=12)
+    axs.set_xlim([0,120])
+    axs.set_ylim([-0.0049,0.0099])
+    axs.legend(fontsize=8, ncol=2, frameon=False)
+
+    plt.savefig('Cl2_Energy_Conservation', bbox_inches='tight')
+
+
 Cl2_Dissociation()
+
+Cl2_Energy_Conservation()

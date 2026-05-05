@@ -1,0 +1,20 @@
+name: pyscf_dev
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - gcc
+  - gxx
+  - cmake
+  - python=3.12
+  - numpy
+  - scipy
+  - h5py
+  - pytest
+  - matplotlib
+  - notebook
+  - mdanalysis 
+  - pip
+  #- pip:
+  #     - git+https://github.com/frobnitzem/hirshfeld
+

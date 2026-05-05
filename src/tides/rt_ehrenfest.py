@@ -85,22 +85,35 @@ class RT_Ehrenfest(RT_SCF):
     def _update_grad(self):
         self._grad = self._scf.apply(self._grad_func)
 
-    # Additional term arising from the moving nuclei in the classical path approximation to be added to the fock matrix
-    # Reminder to turn the complex conserving potential term Omega into a potential classes
     def _get_omega(self):
-        mol = self._scf.mol
         Rdot = self.nuc.vel
-        X = self.orth
-        Xinv = inv(X)
+        mol = self._scf.mol
         dS = -mol.intor('int1e_ipovlp', comp=3)
-    
-        Omega = np.zeros(X.shape, dtype = complex)
-        RdSX = np.zeros(X.shape)
+        omega = np.zeros(self.ovlp.shape, dtype=np.complex128)
         aoslices = mol.aoslice_by_atom()
         for idx in range(mol.natm):
             p0, p1 = aoslices[idx,2:]
-            RdSX += np.einsum('x,xij,ik->jk', Rdot[idx], dS[:,p0:p1,:], X[p0:p1,:])
-        Omega += np.matmul(RdSX, Xinv)
-        return Omega
+            #omega += np.einsum('x,xij,ik->jk', Rdot[idx], dS[:,p0:p1,:], X[p0:p1,:])
+        #omega += np.matmul(RdSX, Xinv)
+        return omega
+
+
+    # Additional term arising from the moving nuclei in the classical path approximation to be added to the fock matrix
+    # Reminder to turn the complex conserving potential term Omega into a potential classes
+    # def _get_omega(self):
+    #     mol = self._scf.mol
+    #     Rdot = self.nuc.vel
+    #     X = self.orth
+    #     Xinv = inv(X)
+    #     dS = -mol.intor('int1e_ipovlp', comp=3)
+    # 
+    #     Omega = np.zeros(X.shape, dtype = complex)
+    #     RdSX = np.zeros(X.shape)
+    #     aoslices = mol.aoslice_by_atom()
+    #     for idx in range(mol.natm):
+    #         p0, p1 = aoslices[idx,2:]
+    #         RdSX += np.einsum('x,xij,ik->jk', Rdot[idx], dS[:,p0:p1,:], X[p0:p1,:])
+    #     Omega += np.matmul(RdSX, Xinv)
+    #     return Omega
 
 
