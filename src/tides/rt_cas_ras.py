@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from scipy.linalg import inv
-from pyscf import mcscf
+from pyscf import mcscf, fci
 from pyscf.scf import addons
 from pyscf.lib import logger
 from tides.rt_casprop import propagate
@@ -9,16 +9,24 @@ from tides import rt_observables
 from tides import fci_mod as fci_mod
 from tides.rt_utils import restart_from_chkfile
 
+'''
+THIS VERSION OF TDCASSCF IS BUGGED
+Use rt_cas_ras_no_proj for TD-CAS/RAS-SCF
+'''
+
 class RT_CAS_RAS:
     '''
-    opt: Currently supports two options
-        opt='CASCI' for TDCASCI calculation
-        opt='CASSCF' for TDCASSCF calculation
+    opt: String
+        opt='CASCI' for TD-CAS/RAS-CI calculation
+        opt='CASSCF' for TD-CAS/RAS-SCF calculation
     ras: pyscf mcscf CASSCF/CASCI object, solved for its t=0 state
     timestep: as defined for the given propogation method
     max_time: total time to run the dynamics for
     outputName: name of output file used to check for numerical stability
     corrDenName: name of output file that shows each AO occupation at each time step
+    reg: Float, minimum allowed eigenvalue of matrices before inversion can take place
+        Only actually effects CAS/RAS SCF
+    opts: Array of integers indicating allowed excitations (1 allows -S, 2 allows -D, etc.). Full CAS calculation is opts left as default.
     filename: I don't use this, left to keep consistent with rt_scf class
     h1e: 1 e Hamiltonian in AO basis at initial time
     h2e: 2 e Hamiltonian in AO basis at initial time
@@ -32,15 +40,15 @@ class RT_CAS_RAS:
     verbose: I don't use this, left to keep consistent with rt_scf class
     ovlp: AO overlap matrix
     '''
-    def __init__(self, opt,ras, timestep, max_time, outputName, corrDenName, filename=None, h1e=None, h2e=None, prop=None, frequency=1, mo_to_ao=None, orth=None, chkfile=None, verbose=3, ovlp=None):
+    def __init__(self, opt,ras, timestep, max_time, outputName, corrDenName, reg,opts = None,filename=None, h1e=None, h2e=None, prop=None, frequency=1, mo_to_ao=None, orth=None, chkfile=None, verbose=3, ovlp=None):
         self.timestep = timestep
         self.frequency = frequency
         self.max_time = max_time
         self._scf = ras
-        if ovlp is None: ovlp = self._scf.mol.intor('int1e_ovlp')
         self.ovlp = ovlp
         self.outName = outputName
         self.corName = corrDenName
+        self.ep = reg
         
         # CASCI or CASSCF
         self._castype = opt
@@ -60,16 +68,24 @@ class RT_CAS_RAS:
         self._potential = []
 
         self.labels = [self._scf.mol._atom[idx][0] for idx, _ in enumerate(self._scf.mol._atom)]
+
+        # Get Hamiltonians in AO basis, MO/AO basis transformation matrix, AO overlap matrix, and/or AO/OAO basis transformation matrix from cas object if no custom ones are given
         if h1e is None: h1e=self._scf.get_hcore()
         if h2e is None: h2e=self._scf.mol.intor('int2e')
+        if mo_to_ao is None:
+            mo_to_ao = self._scf.mo_coeff
+        if ovlp is None: ovlp = self._scf.mol.intor('int1e_ovlp')
+        self.ovlp = ovlp
+        if orth is None: orth = addons.canonical_orth_(self.ovlp)
+
         if prop is None: prop = 'rk4cr'
+        self.prop = prop
+
+        # See vv in rt_integrators or rt_integrators_np
         if prop == 'vv':
             self.pMinusHalf = 0
             self.pDotH = 0
             self.firstStep = True
-        if mo_to_ao is None:
-            mo_to_ao = self._scf.mo_coeff[:,:self.numP]
-        if orth is None: orth = addons.canonical_orth_(self.ovlp)
 
         # One and two electron Hamiltonians at t=0
         self._h1e_AO_0 = np.copy(h1e)
@@ -82,7 +98,6 @@ class RT_CAS_RAS:
         # Number of atomic orbitals
         self.no = len(self._h1e_AO)
 
-        self.prop = prop
         self.mo_to_ao = np.copy(mo_to_ao)
 
         # AO to MO transformation matrix
@@ -116,6 +131,29 @@ class RT_CAS_RAS:
         else:
             self.current_time = 0
 
+        self.ras = False
+        # self.ind gives CI vector indices that the input ras scheme allows to be nonzero
+        # self.ras being True indicates RAS CI/SCF
+        # self.ras being False indicates CAS CI/SCF
+        if opts is not None:
+            self.opts = opts
+            self.ras = True
+            indA = np.array(fci.cistring.make_strings(range(self._scf.ncas),self._scf.nelecas[0]),dtype=np.uint8)
+            rowOccs = np.unpackbits(indA[:,np.newaxis],axis=1,bitorder='little',count=self._scf.ncas)
+            nA = np.sum(rowOccs[0])
+            p2A = np.delete(rowOccs,np.s_[0:nA],axis=1)
+            indB = np.array(fci.cistring.make_strings(range(self._scf.ncas),self._scf.nelecas[1]),dtype=np.uint8)
+            colOccs = np.unpackbits(indB[:,np.newaxis],axis=1,bitorder='little',count=self._scf.ncas)
+            nB = np.sum(colOccs[0])
+            p2B = np.delete(colOccs,np.s_[0:nB],axis=1)
+            goodInd = np.zeros((len(p2A),len(p2B)))
+            for i in range(len(goodInd)):
+                for j in range(len(goodInd[0])):
+                    el = np.sum(p2A[i]) + np.sum(p2B[j])
+                    if el == 0 or el in self.opts:
+                        goodInd[i,j] = 1
+            self.ind = goodInd
+
         self._t0 = self.current_time
 
         rt_observables._init_observables(self)
@@ -127,45 +165,51 @@ class RT_CAS_RAS:
 
         return any(type_code == t.__name__ for t in self.__class__.__mro__)
     
+    # Increment current time by an amount determined by the propogation method
     def update_time(self):
         if self.prop == 'rk4cr' or self.prop == 'vv':
             self.current_time += (self.timestep/2)
         else:
             self.current_time += self.timestep
 
+    # Get AO to MO transformation matrix from MO to AO transformation matrix
     def get_ao_to_mo(self):
         return self.mo_to_ao.conj().T
     
+    # Get MO to AO transformation matrix from AO to MO transformation matrix
     def get_mo_to_ao(self):
         return self.ao_to_mo.conj().T
 
+    # Transform 1e Hamiltonian from AO to MO basis
     def get_h1e_mo(self):
         rawOut = np.matmul(self.mo_to_ao.conj().T,np.matmul(self._h1e_AO,self.mo_to_ao)).astype(np.complex128)
         return rawOut
 
-    # h1e in orthogonal AO basis is currently not used
+    # Transform 1e Hamiltonian from AO to OAO basis
+    # Also, updates time-dependent Hamiltonian
     def get_h1e_orth(self):
         if self._potential: self.apply_potential()
         return np.matmul(self.orth.conj().T,np.matmul(self._h1e_AO,self.orth)).astype(np.complex128)
 
+    # Transform 2e Hamiltonian from AO to MO basis
     def get_h2e_mo(self):
         mat1 = np.einsum('ap,pqrs,qb',self.mo_to_ao.conj().T,self._h2e_AO,self.mo_to_ao).astype(np.complex128)
         return np.einsum('cr,abrs,sd',self.mo_to_ao.conj().T,mat1,self.mo_to_ao).astype(np.complex128)
     
-    # h1e in orthogonal AO basis is currently not used
+    # Transform 2e Hamiltonian from AO to OAO basis
     def get_h2e_orth(self):
         mat1 = np.einsum('ap,pqrs,qb',self.orth.conj().T,self._h2e_AO,self.orth).astype(np.complex128)
         return np.einsum('cr,abrs,sd',self.orth.conj().T,mat1,self.orth).astype(np.complex128)
     
-    # I don't use this, left to keep consistent with rt_scf class
+    # Transform a single-particle orbital from MO to AO basis
     def rotate_mo_to_ao(self,coeff_mo):
         return np.matmul(self.mo_coeff_canon,coeff_mo)
     
-    # I don't use this, left to keep consistent with rt_scf class
+    # Transform a single-particle orbital from AO to OAO basis
     def rotate_ao_to_orth(self, coeff_ao):
         return np.matmul(inv(self.orth), coeff_ao)
     
-    # Returns density matrix in AO basis
+    # Gets density matrix in AO basis from the current ci vector and AO to MO transformation matrix
     def get_den_ao(self):
         corr1RDMcas, corr2RDMcas = fci_mod.get_corr12RDM(self._scf.ci, self._scf.ncas, self._scf.nelecas)
         self.casrdm1 = np.copy(corr1RDMcas) # Stores active space 1rdm in MO basis
@@ -192,6 +236,7 @@ class RT_CAS_RAS:
             self._potential.append(v_ext)
 
     # Updates h1e in AO basis to reflect Hamiltonian at the current time
+    # Note that self._potential must be a list containing a single time-dependent term
     def apply_potential(self):
         for v_ext in self._potential:
             self._h1e_AO = self._h1e_AO_0 + v_ext.calculate_potential(self)

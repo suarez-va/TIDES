@@ -261,6 +261,122 @@ def apply_ham_pyscf_complex(
 #####################################################################
 
 
+def apply_ham_pyscf_complex_ras(
+    CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst,goodInd, fctr=0.5
+):
+    """
+    NOTE: THIS SUBROUTINE ALLOWS FOR COMPLEX HAMILTONIAN,
+    BUT ONLY REAL CI COEFFICIENTS
+    AND IS USING THE SUBROUTINES IN THIS MODULE TO APPLY THE HAMILTONIAN
+    subroutine to apply a hamiltonian to a vector
+    of CI coefficients using pyscf
+    CIcoeffs is a 2d-array containing the CI coefficients,
+    the rows/columns correspond to the alpha/beta strings
+    the strings are ordered in asscending binary order with a
+    0/1 implies that an orbital is empty/occupied
+    the 2e- integrals, Vmat, are given in chemistry notation
+    Econst is a constant energy contribution to the hamiltonian
+    fctr is the factor in front of the 2e- terms when defining the hamiltonian
+    """
+    Vmat = absorb_h1e_complex(hmat, Vmat, norbs, (nalpha, nbeta), fctr)
+    temp = contract_2e_complex_ras(Vmat, CIcoeffs, norbs, (nalpha, nbeta),goodInd)
+    CIcoeffs = temp + Econst * CIcoeffs
+
+    return CIcoeffs
+
+
+#####################################################################
+
+
+def contract_2e_complex_ras(g2e, fcivec, norb, nelec,gi,link_index=None):
+    """
+    version of the pyscf subroutine contract_2e
+    which allows for complex orbitals
+    still assumes real CI coefficients
+    removed calls to pyscf.ao2mo.restore
+    other changes from pyscf have been noted
+    subroutine follows logic of
+    eqs 11.8.13-11.8.15 in helgaker, jorgensen and olsen
+    """
+
+    neleca, nelecb = nelec
+    if link_index is None:
+        link_indexa = cistring.gen_linkstr_index(range(norb), neleca)
+        link_indexb = cistring.gen_linkstr_index(range(norb), nelecb)
+    else:
+        link_indexa, link_indexb = link_index
+
+    #print('link_indexa')
+    #print(link_indexa)
+    #print('link_indexb')
+    #print(link_indexb)
+
+    na = link_indexa.shape[0]
+    nb = link_indexb.shape[0]
+    #print('fcivec')
+    #print(fcivec)
+    fcivec = fcivec.reshape(na, nb)
+    #print('fcivec')
+    #print(fcivec)
+
+    #print('na,nb')
+    #print(na)
+    #print(nb)
+
+    t1 = numpy.zeros((norb, norb, na, nb))
+    #print('enum1')
+    #print(enumerate(link_indexa))
+    #print('enum2')
+    #print(enumerate(link_indexb))
+    for str0, tab in enumerate(link_indexa):
+        #print(tab)
+        for a, i, str1, sign in tab:
+            for strOpp in range(len(fcivec[str0])):
+                if gi[str1,strOpp] == 1:
+                    t1[a, i, str1, strOpp] += sign * fcivec[str0,strOpp]
+    for k in range(na):
+        for str0, tab in enumerate(link_indexb):
+            for a, i, str1, sign in tab:
+                if gi[k,str1] == 1:
+                    #print(str1)
+                    t1[a, i, k, str1] += sign * fcivec[k, str0]
+
+    # following line assumes the symmetry
+    # that g[p,q,r,s]=g[r,s,p,q] in chemists notation
+    # this symmetry holds for real and complex orbitals
+    t1 = numpy.dot(g2e.reshape(norb * norb, -1), t1.reshape(norb * norb, -1))
+    t1 = t1.reshape(norb, norb, na, nb)
+    '''
+    print('t1')
+    for i in range(norb):
+        for j in range(norb):
+            print(t1[i][j])
+    sys.exit()
+    '''
+
+    # data type of ci1 is now complex
+    ci1 = numpy.zeros_like(fcivec, dtype=complex)
+    for str0, tab in enumerate(link_indexa):
+        for a, i, str1, sign in tab:
+            for strOpp in range(len(ci1[str0])):
+                if gi[str0,strOpp] == 1:
+                    ci1[str0,strOpp] += sign * t1[i,a,str1,strOpp]
+            #print(sign * t1[i, a, str1])
+    for k in range(na):
+        for str0, tab in enumerate(link_indexb):
+            for a, i, str1, sign in tab:
+                #print(str0)
+                #print(str1)
+                # indices a and i have been switched from pyscf
+                if gi[k,str0] == 1:
+                    ci1[k, str0] += sign * t1[i, a, k, str1]
+    #sys.exit()
+    return ci1
+
+
+#####################################################################
+
+
 def contract_2e_complex(g2e, fcivec, norb, nelec, link_index=None):
     """
     version of the pyscf subroutine contract_2e

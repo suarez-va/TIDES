@@ -20,8 +20,10 @@ def propagate(rt_cr,mo_coeff_print):
     rt_cr.mo_to_orth = rt_cr.get_mo_to_orth()
     rt_cr.orth_to_mo = rt_cr.mo_to_orth.conj().T
 
-    # In the future, will provide option to shift CI Hamiltonian by CI ground state energy
-    eShift = 0.0
+    # Shift CI Hamiltonian by core energy at t=0 to improve numerical stability
+    xp = rt_cr.get_x()
+    e1, h1a1, h2a1 = rt_cr.get_embH(xp)
+    eShift = np.copy(e1)
     
     file_output = open(rt_cr.outName, "wb")
     file_corrdens = open(rt_cr.corName, "wb")
