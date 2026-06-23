@@ -1,19 +1,18 @@
 import numpy as np
 import os
+import sys
 from scipy.linalg import inv
 from pyscf import mcscf, fci
 from pyscf.scf import addons
 from pyscf.lib import logger
-from tides.rt_casprop import propagate
+from tides.rt_casprop_np import propagate
 from tides import rt_observables
 from tides import fci_mod as fci_mod
 from tides.rt_utils import restart_from_chkfile
 
 '''
-This version of RT CAS/RAS CI/SCF does not project out virtual space.
-Use this version for RT-CAS/RAS-SCF calculations for now
-Note that RT-CAS/RAS-SCF currently does not support time-dependent Hamiltonians
-RT-RAS-SCF IS UNTESTED
+RT-RAS-SCF is untested
+Does not project out virtual space
 '''
 
 class RT_CAS_RAS:
@@ -42,7 +41,7 @@ class RT_CAS_RAS:
     verbose: I don't use this, left to keep consistent with rt_scf class
     ovlp: AO overlap matrix
     '''
-    def __init__(self, opt,ras, timestep, max_time, outputName, corrDenName, reg, opts = None, filename=None, h1e=None, h2e=None, prop=None, frequency=1, mo_to_ao=None, orth=None, chkfile=None, verbose=3, ovlp=None):
+    def __init__(self, opt,ras, timestep, max_time, outputName, corrDenName, reg=1e-5, opts = None, filename=None, h1e=None, h2e=None, prop=None, frequency=1, mo_to_ao=None, orth=None, chkfile=None, verbose=3, ovlp=None):
         self.timestep = timestep
         self.frequency = frequency
         self.max_time = max_time
@@ -71,13 +70,26 @@ class RT_CAS_RAS:
         self.labels = [self._scf.mol._atom[idx][0] for idx, _ in enumerate(self._scf.mol._atom)]
 
         # Get Hamiltonians in AO basis, MO/AO basis transformation matrix, AO overlap matrix, and/or AO/OAO basis transformation matrix from cas object if no custom ones are given
-        if h1e is None: h1e=self._scf.get_hcore()
-        if h2e is None: h2e=self._scf.mol.intor('int2e')
+        if h1e is None:
+            self._h1e_AO_0 = self._scf.get_hcore()
+        else:
+            self._h1e_AO_0 = h1e
+        if h2e is None:
+            self._h2e_AO = self._scf.mol.intor('int2e')
+        else:
+            self._h2e_AO = h2e
         if mo_to_ao is None:
-            mo_to_ao = self._scf.mo_coeff
-        if ovlp is None: ovlp = self._scf.mol.intor('int1e_ovlp')
-        self.ovlp = ovlp
-        if orth is None: orth = addons.canonical_orth_(self.ovlp)
+            self.mo_to_ao = self._scf.mo_coeff
+        else:
+            self.mo_to_ao = mo_to_ao
+        if ovlp is None:
+            self.ovlp = self._scf.mol.intor('int1e_ovlp')
+        else:
+            self.ovlp = ovlp
+        if orth is None:
+            self.orth = addons.canonical_orth_(self.ovlp)
+        else:
+            self.orth = orth
 
         if prop is None: prop = 'rk4cr'
         self.prop = prop
@@ -87,14 +99,13 @@ class RT_CAS_RAS:
             self.pMinusHalf = 0
             self.pDotH = 0
             self.firstStep = True
+            if self._castype == 'CASSCF':
+                print('TD-_-SCF isnt applicable to velocity verlet')
+                sys.exit()
+                # Will replace with error when error class gets implemented
 
-        # One and two electron Hamiltonians at t=0
-        self._h1e_AO_0 = np.copy(h1e)
-        self._h2e_AO_0 = np.copy(h2e)
-
-        # One and two electron Hamiltonians at the current time
-        self._h1e_AO = np.copy(h1e)
-        self._h2e_AO = np.copy(h2e)
+        # One electron Hamiltonian at the current time
+        self._h1e_AO = np.copy(self._h1e_AO_0)
 
         # Number of atomic orbitals
         self.no = len(self._h1e_AO)

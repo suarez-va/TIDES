@@ -227,26 +227,9 @@ def rk4cr(rt_cr,fo,fs,fc,eShift):
     '''
     # Note function f in comments represents derivative equation
 
-    # Call to update MO coefficient at new time step
-    def updateMO(moNew):
-        rt_cr.mo_to_ao = np.copy(moNew)
-        rt_cr.ao_to_mo = rt_cr.get_ao_to_mo()
-        rt_cr._scf.mo_coeff[:,:rt_cr.numP] = np.copy(rt_cr.mo_to_ao)
-        rt_cr._h1e_mo = rt_cr.get_h1e_mo()
-        rt_cr._h2e_mo = rt_cr.get_h2e_mo()
-        rt_cr.mo_to_orth = rt_cr.get_mo_to_orth()
-        rt_cr.orth_to_mo = rt_cr.mo_to_orth.conj().T
-
-    # Call to update Hamiltonian at new time step
-    def updateHam():
-        rt_cr._h1e_orth = rt_cr.get_h1e_orth()
-        rt_cr._h1e_mo = rt_cr.get_h1e_mo()
-        rt_cr._h2e_orth = rt_cr.get_h2e_orth()
-        rt_cr._h2e_mo = rt_cr.get_h2e_mo()
-
     # Collect initial terms
-    x_mat = rt_cr.get_x()
-    e0, h1Act, h2Act = rt_cr.get_embH(x_mat)
+    xAct,xAo = rt_cr.get_x()
+    e0, h1Act, h2Act = rt_cr.get_embH(xAct)
     reci0 = np.copy(rt_cr._scf.ci.real)
     imci0 = np.copy(rt_cr._scf.ci.imag)
     c0 = np.copy(rt_cr._scf.ci)
@@ -257,24 +240,26 @@ def rk4cr(rt_cr,fo,fs,fc,eShift):
         ck1 = (-1j*applyham_pyscf.apply_ham_pyscf_check(reci0,h1Act,h2Act,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e0-eShift))+(applyham_pyscf.apply_ham_pyscf_check(imci0,h1Act,h2Act,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e0-eShift))
     else:
         ck1 = (-1j*applyham_pyscf.apply_ham_pyscf_complex_ras(reci0,h1Act,h2Act,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e0-eShift,rt_cr.ind))+(applyham_pyscf.apply_ham_pyscf_complex(imci0,h1Act,h2Act,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e0-eShift,rt_cr.ind))
-    rk1 = -1j*np.matmul(rt_cr.mo_to_ao,x_mat)
+    rk1 = -1j*xAo
 
     # c1 and mo1 represent y0 + k1*timestep/2
     c1 = rt_cr._scf.ci + (rt_cr.timestep*ck1/2)
     mo1 = rt_cr.mo_to_ao +(rt_cr.timestep*rk1/2)
 
     # Update system
-    if rt_cr._castype == 'CASSCF':
-        updateMO(mo1)
     rt_cr.update_time()
+    newAO = rt_cr.apply_potential()
+    if rt_cr._castype == 'CASSCF':
+        rt_cr.updateMO(mo1,newAO)
+    elif len(rt_cr._potential) > 0:
+        rt_cr.updateHam(newAO)
     rt_cr._scf.ci = np.copy(c1)
+    rt_cr.casrdm1, rt_cr.casrdm2 = rt_cr.get_casrdm12()
     rt_cr.den_ao = rt_cr.get_den_ao()
-    if len(rt_cr._potential) > 0:
-        updateHam()
 
     # Collect new terms for equations of motion
-    x2 = rt_cr.get_x()
-    e2, h1a2, h2a2 = rt_cr.get_embH(x2)
+    xp2,xao2 = rt_cr.get_x()
+    e2, h1a2, h2a2 = rt_cr.get_embH(xp2)
     reci1 = np.copy(c1.real)
     imci1 = np.copy(c1.imag)
 
@@ -283,7 +268,7 @@ def rk4cr(rt_cr,fo,fs,fc,eShift):
         ck2 = (-1j*applyham_pyscf.apply_ham_pyscf_check(reci1,h1a2,h2a2,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e2-eShift))+(applyham_pyscf.apply_ham_pyscf_check(imci1,h1a2,h2a2,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e2-eShift))
     else:
         ck2 = (-1j*applyham_pyscf.apply_ham_pyscf_complex_ras(reci1,h1a2,h2a2,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e2-eShift,rt_cr.ind))+(applyham_pyscf.apply_ham_pyscf_complex(imci1,h1a2,h2a2,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e2-eShift,rt_cr.ind))
-    rk2 = -1j*np.matmul(rt_cr.mo_to_ao,x2)
+    rk2 = -1j*xao2
 
     # c2 and mo2 represent y0 + k2*timestep/2
     c2 = c0 + (rt_cr.timestep*ck2/2)
@@ -291,13 +276,14 @@ def rk4cr(rt_cr,fo,fs,fc,eShift):
 
     # Update system. Note time didn't increment but ci coefficients and molecular orbitals are updated
     if rt_cr._castype == 'CASSCF':
-        updateMO(mo2)
+        rt_cr.updateMO(mo2,newAO)
     rt_cr._scf.ci = np.copy(c2)
+    rt_cr.casrdm1, rt_cr.casrdm2 = rt_cr.get_casrdm12()
     rt_cr.den_ao = rt_cr.get_den_ao()
 
     # Collect new terms for equations of motion
-    x3 = rt_cr.get_x()
-    e3, h1a3, h2a3 = rt_cr.get_embH(x3)
+    xp3,xao3 = rt_cr.get_x()
+    e3, h1a3, h2a3 = rt_cr.get_embH(xp3)
     reci2 = np.copy(c2.real)
     imci2 = np.copy(c2.imag)
 
@@ -306,7 +292,7 @@ def rk4cr(rt_cr,fo,fs,fc,eShift):
         ck3 = (-1j*applyham_pyscf.apply_ham_pyscf_check(reci2,h1a3,h2a3,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e3-eShift))+(applyham_pyscf.apply_ham_pyscf_check(imci2,h1a3,h2a3,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e3-eShift))
     else:
         ck3 = (-1j*applyham_pyscf.apply_ham_pyscf_complex_ras(reci2,h1a3,h2a3,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e3-eShift,rt_cr.ind))+(applyham_pyscf.apply_ham_pyscf_complex(imci2,h1a3,h2a3,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e3-eShift,rt_cr.ind))
-    rk3 = -1j*np.matmul(rt_cr.mo_to_ao,x3)
+    rk3 = -1j*xao3
 
     # c3 and mo3 represent y0 + k3*timestep
     c3 = c0 + (rt_cr.timestep*ck3)
@@ -314,16 +300,18 @@ def rk4cr(rt_cr,fo,fs,fc,eShift):
 
     # Update system
     rt_cr.update_time()
+    newAO2 = rt_cr.apply_potential()
     if rt_cr._castype == 'CASSCF':
-        updateMO(mo3)
+        rt_cr.updateMO(mo3,newAO2)
+    elif len(rt_cr._potential) > 0:
+        rt_cr.updateHam(newAO2)
     rt_cr._scf.ci = np.copy(c3)
+    rt_cr.casrdm1, rt_cr.casrdm2 = rt_cr.get_casrdm12()
     rt_cr.den_ao = rt_cr.get_den_ao()
-    if len(rt_cr._potential) > 0:
-        updateHam()
 
     # Collect new terms for equations of motion
-    x4 = rt_cr.get_x()
-    e4, h1a4, h2a4 = rt_cr.get_embH(x4)
+    xp4,xao4 = rt_cr.get_x()
+    e4, h1a4, h2a4 = rt_cr.get_embH(xp4)
     reci3 = np.copy(c3.real)
     imci3 = np.copy(c3.imag)
 
@@ -332,7 +320,7 @@ def rk4cr(rt_cr,fo,fs,fc,eShift):
         ck4 = (-1j*applyham_pyscf.apply_ham_pyscf_check(reci3,h1a4,h2a4,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e4-eShift))+(applyham_pyscf.apply_ham_pyscf_check(imci3,h1a4,h2a4,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e4-eShift))
     else:
         ck4 = (-1j*applyham_pyscf.apply_ham_pyscf_complex_ras(reci3,h1a4,h2a4,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e4-eShift,rt_cr.ind))+(applyham_pyscf.apply_ham_pyscf_complex(imci3,h1a4,h2a4,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e4-eShift,rt_cr.ind))
-    rk4 = -1j*np.matmul(rt_cr.mo_to_ao,x4)
+    rk4 = -1j*xao4
 
     # y1 = (timestep/6)(k1 + 2*k2 + 2*k3 + k4)
     cf = c0 + ((rt_cr.timestep/6)*(ck1+(2*ck2)+(2*ck3)+ck4))
@@ -340,9 +328,9 @@ def rk4cr(rt_cr,fo,fs,fc,eShift):
 
     # Update system. Note time doesn't increment
     if rt_cr._castype == 'CASSCF':
-        updateMO(mof)
+        rt_cr.updateMO(mof,newAO2)
     rt_cr._scf.ci = np.copy(cf)
-    #print(cf)
+    rt_cr.casrdm1, rt_cr.casrdm2 = rt_cr.get_casrdm12()
     rt_cr.den_ao = rt_cr.get_den_ao()
 
     # Collect output file checks
@@ -389,19 +377,12 @@ def vv(rt_cr,fo,fs,fc,eShift):
     For TDCASCI only
     '''
 
-    # Update Hamiltonian whenever time increments
-    def updateHam():
-        rt_cr._h1e_orth = rt_cr.get_h1e_orth()
-        rt_cr._h1e_mo = rt_cr.get_h1e_mo()
-        rt_cr._h2e_orth = rt_cr.get_h2e_orth()
-        rt_cr._h2e_mo = rt_cr.get_h2e_mo()
-
     # Initialize terms
-    x_mat = rt_cr.get_x()
+    xp0, _ = rt_cr.get_x()
     q0 = np.copy(rt_cr._scf.ci.real)
 
     if rt_cr.firstStep == True:
-        e1, h1a1, h2a1 = rt_cr.get_embH(x_mat)
+        e1, h1a1, h2a1 = rt_cr.get_embH(xp0)
         p0 = np.copy(rt_cr._scf.ci.imag)
         # Eq 7
         if rt_cr.ras == False:
@@ -417,10 +398,11 @@ def vv(rt_cr,fo,fs,fc,eShift):
 
     # Increment Time
     rt_cr.update_time()
+    newAO = rt_cr.apply_potential()
     if len(rt_cr._potential) > 0:
-        updateHam()
+        rt_cr.updateHam(newAO)
 
-    e2, h1a2, h2a2 = rt_cr.get_embH(x_mat)
+    e2, h1a2, h2a2 = rt_cr.get_embH(xp0)
     # Eq 9/13
 
     if rt_cr.ras == False:
@@ -432,10 +414,11 @@ def vv(rt_cr,fo,fs,fc,eShift):
 
     # Increment Time
     rt_cr.update_time()
+    newAO2 = rt_cr.apply_potential()
     if len(rt_cr._potential) > 0:
-        updateHam()
+        rt_cr.updateHam(newAO2)
 
-    e3, h1a3, h2a3 = rt_cr.get_embH(x_mat)
+    e3, h1a3, h2a3 = rt_cr.get_embH(xp0)
     # Eq 11/15
     if rt_cr.ras == False:
         pDotH = -applyham_pyscf.apply_ham_pyscf_check(qH,h1a3,h2a3,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e3-eShift).astype(np.float64)
@@ -449,6 +432,7 @@ def vv(rt_cr,fo,fs,fc,eShift):
     rt_cr.pMinusHalf = np.copy(pHalfH) # Preps Eq 12 for next step
     rt_cr.pDotH = np.copy(pDotH) # Preps Eq 12 for next step
     rt_cr.firstStep = False
+    rt_cr.casrdm1, rt_cr.casrdm2 = rt_cr.get_casrdm12()
     rt_cr.den_ao = rt_cr.get_den_ao()
 
     # Collect output file checks

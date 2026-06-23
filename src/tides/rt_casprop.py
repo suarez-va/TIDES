@@ -21,9 +21,12 @@ def propagate(rt_cr,mo_coeff_print):
     rt_cr.orth_to_mo = rt_cr.mo_to_orth.conj().T
 
     # Shift CI Hamiltonian by core energy at t=0 to improve numerical stability
-    xp = rt_cr.get_x()
+    xp,xao = rt_cr.get_x()
     e1, h1a1, h2a1 = rt_cr.get_embH(xp)
-    eShift = np.copy(e1)
+    gs = np.zeros(np.shape(rt_cr._scf.ci))
+    gs[0][0] = 1.0
+    hPsi = applyham_pyscf.apply_ham_pyscf_check(gs,h1a1,h2a1,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e1)
+    eShift = hPsi[0][0]
     
     file_output = open(rt_cr.outName, "wb")
     file_corrdens = open(rt_cr.corName, "wb")
