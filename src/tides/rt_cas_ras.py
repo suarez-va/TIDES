@@ -11,7 +11,7 @@ from tides import fci_mod as fci_mod
 from tides.rt_utils import restart_from_chkfile
 
 '''
-TD-RAS-SCF is untested
+TD-RAS-SCF is not implemented
 Projects out virtual space
 '''
 
@@ -78,9 +78,9 @@ class RT_CAS_RAS:
 
         # Get Hamiltonians in AO basis, MO/AO basis transformation matrix, AO overlap matrix, and/or AO/OAO basis transformation matrix from cas object if no custom ones are given
         if h1e is None:
-            self._h1e_AO_0 = self._scf.get_hcore()
+            self._h1e_AO_0 = self._scf.get_hcore().T
         else:
-            self._h1e_AO_0 = h1e
+            self._h1e_AO_0 = h1e.T
         if h2e is None:
             self._h2e_AO = self._scf.mol.intor('int2e')
         else:
@@ -214,21 +214,21 @@ class RT_CAS_RAS:
 
     # Given 1e Hamiltonian in AO basis, transform to MO basis
     def get_h1e_mo(self,h1):
-        return np.matmul(self.ao_to_mo,np.matmul(h1,self.mo_to_ao)).astype(np.complex128).T
+        return np.matmul(self.ao_to_mo,np.matmul(h1,self.mo_to_ao)).astype(np.complex128)
 
     # Given 1e Hamiltonian in AO basis, transform to OAO basis
     def get_h1e_orth(self,h1):
-        return np.matmul(self.orth_inv,np.matmul(h1,self.orth)).astype(np.complex128).T
+        return np.matmul(self.orth_inv,np.matmul(h1,self.orth)).astype(np.complex128)
 
     # Transform 2e Hamiltonian from AO to MO basis
     def get_h2e_mo(self):
-        mat1 = np.einsum('ap,pqrs,qb',self.mo_to_ao.conj().T,self._h2e_AO,self.mo_to_ao).astype(np.complex128)
-        return np.einsum('cr,abrs,sd',self.mo_to_ao.conj().T,mat1,self.mo_to_ao).astype(np.complex128)
+        mat1 = np.einsum('ap,pqrs,qb',self.ao_to_mo,self._h2e_AO,self.mo_to_ao).astype(np.complex128)
+        return np.einsum('cr,abrs,sd',self.ao_to_mo,mat1,self.mo_to_ao).astype(np.complex128)
     
     # Transform 2e Hamiltonian from AO to OAO basis
     def get_h2e_orth(self):
-        mat1 = np.einsum('ap,pqrs,qb',self.orth.conj().T,self._h2e_AO,self.orth).astype(np.complex128)
-        return np.einsum('cr,abrs,sd',self.orth.conj().T,mat1,self.orth).astype(np.complex128)
+        mat1 = np.einsum('ap,pqrs,qb',self.orth_inv,self._h2e_AO,self.orth).astype(np.complex128)
+        return np.einsum('cr,abrs,sd',self.orth_inv,mat1,self.orth).astype(np.complex128)
     
     # Transform a single-particle orbital from MO to AO basis
     def rotate_mo_to_ao(self,coeff_mo):
@@ -236,7 +236,7 @@ class RT_CAS_RAS:
     
     # Transform a single-particle orbital from AO to OAO basis
     def rotate_ao_to_orth(self, coeff_ao):
-        return np.matmul(inv(self.orth), coeff_ao)
+        return np.matmul(self.orth_inv, coeff_ao)
     
     # Returns density matrix in AO basis
     def get_den_ao(self):
@@ -264,6 +264,10 @@ class RT_CAS_RAS:
     def mo_unitvec_to_orth(self,mo):
         return self.mo_to_orth[:,mo]
     
+    # Express molecular orbital in AO basis
+    def mo_unitvec_to_ao(self,mo):
+        return self.mo_to_ao[:,mo]
+    
     # Adds some time-dependent term to the list of time-dependent Hamiltonian terms
     def add_potential(self, *args):
         for v_ext in args:
@@ -288,15 +292,16 @@ class RT_CAS_RAS:
     # Gets Wab operator in OAO basis as defined in Phys. Rev. A 88, 023402
     # Note that this corresponds to p=a and q=b in eq 32
     def get_w_orth(self,a,b):
-        aBra = self.mo_unitvec_to_orth(a).conj()
-        bKet = self.mo_unitvec_to_orth(b)
-        return np.matmul(aBra,np.matmul(self._h2e_orth,bKet))
+        aBra = self.mo_unitvec_to_ao(a).conj()
+        bKet = self.mo_unitvec_to_ao(b)
+        w_ao = np.matmul(aBra,np.matmul(self._h2e_AO,bKet))
+        return np.matmul(self.orth_inv,np.matmul(w_ao,self.orth)).astype(np.complex128)
     
     # Returns X[q,u] for the X-matrix expressed in the MO basis
     # Corresponds to eq 36 of Phys. Rev. A 88, 023402
     # In group notes, corresponds to Xqu on page 9 of td_cas/td_casscf_notes
     def getQU(self,qn,un,dBarInv):
-        toReturn = self._h1e_mo[qn+self._scf.ncore][un]
+        toReturn = self._h1e_mo[qn+self._scf.ncore,un]
         for k in range(self._scf.ncas):
             kMO = k+self._scf.ncore
             prefac = dBarInv[qn,k]
@@ -317,7 +322,7 @@ class RT_CAS_RAS:
             toReturn = toReturn + (prefac*toAdd)
         return toReturn
     
-    def get_x(self):
+    def get_xMat(self):
         '''
         toReturn: Returns R-matrix in Phys. Rev. A 88, 023402, ignoring rows/columns with virtual orbitals.
             For CI equations of motion
@@ -432,31 +437,18 @@ class RT_CAS_RAS:
     
     # Returns active space constant terms and 1e and 2e Hamiltonians
     # Analogous to final result on page 12 of group's dmet/dmet_original_jctc notes (cannot find equation in J. Chem. Theory Comput. 2013, 9, 3, 1428–1432)
-    def get_embH(self,x):
+    def get_actH(self,x):
         h1 = self._h1e_mo - x
-        Econst = 0.0
+        Econst = 2 * np.sum(np.diag(h1))
         for e in range(self._scf.ncore):
-            Econst = Econst + (2*h1[e,e])
             for f in range(self._scf.ncore):
                 Econst = Econst + (2*self._h2e_mo[e][e][f][f]) - self._h2e_mo[e][f][f][e]
-        h1Mat = np.zeros((self._scf.ncas,self. _scf.ncas),dtype=np.complex128)
+        h1Mat = h1[self._scf.ncore:self.numP,self._scf.ncore:self.numP]
         for a in range(self._scf.ncas):
             for b in range(self._scf.ncas):
-                aMO = a+self._scf.ncore
-                bMO = b+self._scf.ncore
-                h1Mat[a,b] = h1[aMO,bMO]
                 for e in range(self._scf.ncore):
-                    h1Mat[a,b] = h1Mat[a,b] + (2*self._h2e_mo[bMO][aMO][e][e]) - self._h2e_mo[bMO][e][e][aMO]
-        h2Mat = np.zeros((self._scf.ncas,self. _scf.ncas,self._scf.ncas,self. _scf.ncas),dtype=np.complex128)
-        for a in range(self._scf.ncas):
-            aMO = a+self._scf.ncore
-            for b in range(self._scf.ncas):
-                bMO = b+self._scf.ncore
-                for c in range(self._scf.ncas):
-                    cMO = c+self._scf.ncore
-                    for d in range(self._scf.ncas):
-                        dMO = d+self._scf.ncore
-                        h2Mat[a][b][c][d] = self._h2e_mo[aMO][bMO][cMO][dMO]
+                    h1Mat[a,b] = h1Mat[a,b] + (2*self._h2e_mo[b+self._scf.ncore][a+self._scf.ncore][e][e]) - self._h2e_mo[b+self._scf.ncore][e][e][a+self._scf.ncore]
+        h2Mat = self._h2e_mo[self._scf.ncore:self.numP,self._scf.ncore:self.numP,self._scf.ncore:self.numP,self._scf.ncore:self.numP]
         return Econst,h1Mat,h2Mat
 
     # Begin time propogation. I don't use mo_coeff_print, left to keep consistent with rt_scf class
