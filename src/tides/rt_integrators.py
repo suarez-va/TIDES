@@ -55,6 +55,7 @@ def magnus_step(rt_scf):
     rt_scf.den_ao = rt_scf._scf.make_rdm1(mo_occ=rt_scf.occ)
     rt_scf._fock_orth = rt_scf.get_fock_orth(rt_scf.den_ao)
 
+
 def magnus_interpol(rt_scf):
     '''
     C'(t+dt) = U(t+0.5dt)C'(t)
@@ -98,7 +99,7 @@ def magnus_interpol(rt_scf):
         rt_scf._scf.mo_coeff = mo_coeff_ao_pdt
         rt_scf.den_ao = den_ao_pdt
 
-    if (abs(np.linalg.norm(den_ao_pdt) - np.linalg.norm(den_ao_pdt_old)) 
+    if (abs(np.linalg.norm(den_ao_pdt) - np.linalg.norm(den_ao_pdt_old))
     > rt_scf.magnus_tolerance):
         rt_scf._log.error('Magnus integrator failed to converge. Increase magnus_maxiter, or decrease timestep.')
     rt_scf._log.debug1(f'Time step converged on Magnus interation: {iteration}')

@@ -82,6 +82,7 @@ class RT_Ehrenfest(RT_SCF):
         #self.ovlp = self._scf.mol.intor_symmetric('int1e_ovlp')
         self.evals, self.evecs = np.linalg.eigh(self.ovlp)
         self.orth = _sym_orth(self)
+        self.orth_inv = np.linalg.inv(self.orth)  # keep orth_inv consistent with moved-geometry orth
 
     def _update_grad(self):
         self._grad = self._scf.apply(self._grad_func)
