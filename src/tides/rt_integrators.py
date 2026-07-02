@@ -66,110 +66,45 @@ def magnus_interpol(rt_scf):
     3. Build new F'(t+dt), interpolate new F'(t+0.5dt)
     4. Repeat propagation and interpolation until convergence
     '''
+
     mo_coeff_orth = rt_scf.rotate_coeff_to_orth(rt_scf._scf.mo_coeff)
     fock_orth_p12dt = 2 * rt_scf._fock_orth - rt_scf._fock_orth_n12dt
 
     # Update time, mol is updated here if rt_scf is an Ehrenfest obj
     rt_scf.update_time()
 
-    hermitian = len(rt_scf._potential) == 0
-
     for iteration in range(rt_scf.magnus_maxiter):
-        u = _unitary_propagator(fock_orth_p12dt, rt_scf.timestep, hermitian=hermitian)
+        u = expm(-1j*rt_scf.timestep*fock_orth_p12dt)
 
         mo_coeff_orth_pdt = np.matmul(u, mo_coeff_orth)
         mo_coeff_ao_pdt = rt_scf.rotate_coeff_to_ao(mo_coeff_orth_pdt)
         den_ao_pdt = rt_scf._scf.make_rdm1(mo_coeff=mo_coeff_ao_pdt,
                                           mo_occ=rt_scf.occ)
+        #rt_scf.current_time += rt_scf.timestep
         fock_orth_pdt = rt_scf.get_fock_orth(den_ao_pdt)
-
-        fock_orth_p12dt = 0.5 * (rt_scf._fock_orth + fock_orth_pdt)
+        #rt_scf.current_time -= rt_scf.timestep
 
         if (iteration > 0 and
-                np.linalg.norm(den_ao_pdt - den_ao_pdt_old) < rt_scf.magnus_tolerance):
+        abs(np.linalg.norm(den_ao_pdt)
+        - np.linalg.norm(den_ao_pdt_old)) < rt_scf.magnus_tolerance):
+
             rt_scf._scf.mo_coeff = mo_coeff_ao_pdt
             rt_scf.den_ao = den_ao_pdt
+            rt_scf.fock_orth = fock_orth_pdt
+            rt_scf.fock_orth_n12dt = fock_orth_p12dt
             break
+        fock_orth_p12dt = 0.5 * (rt_scf._fock_orth + fock_orth_pdt)
 
         den_ao_pdt_old = np.copy(den_ao_pdt)
         rt_scf._scf.mo_coeff = mo_coeff_ao_pdt
         rt_scf.den_ao = den_ao_pdt
 
-    if (np.linalg.norm(den_ao_pdt - den_ao_pdt_old)
+    if (abs(np.linalg.norm(den_ao_pdt) - np.linalg.norm(den_ao_pdt_old))
     > rt_scf.magnus_tolerance):
         rt_scf._log.error('Magnus integrator failed to converge. Increase magnus_maxiter, or decrease timestep.')
-    rt_scf._log.debug1(f'Time step converged on Magnus iteration: {iteration}')
+    rt_scf._log.debug1(f'Time step converged on Magnus interation: {iteration}')
     rt_scf._fock_orth = fock_orth_pdt
     rt_scf._fock_orth_n12dt = fock_orth_p12dt
-
-def etrs(rt_scf):
-    '''
-    ETRS: Enforced Time-Reversal Symmetry propagator.
-    C(t+dt) = exp(-i*dt/2*F(t+dt)) @ exp(-i*dt/2*F(t)) @ C(t)
-
-    Self-consistent: F(t+dt) depends on C(t+dt) which depends on F(t+dt).
-    Algorithm:
-      1. Predictor: linearly extrapolate F_pred(t+dt) = 2*F(t) - F(t-dt)
-      2. U_t = exp(-i*dt/2*F(t))
-      3. Iterate:
-           C_pred = exp(-i*dt/2*F_pred) @ U_t @ C(t)
-           Build F_new(t+dt) from C_pred
-           If converged, accept
-           Else F_pred = F_new, repeat
-    Unitary and time-reversible by construction → excellent energy conservation.
-    Cost: 2+ Fock builds/step (1 predictor build + 1 per iteration).
-    See: Castro et al., J. Chem. Phys. 121, 3425 (2004).
-
-    Uses magnus_maxiter and magnus_tolerance from rt_scf if present.
-    '''
-    maxiter   = getattr(rt_scf, 'magnus_maxiter', 20)
-    tolerance = getattr(rt_scf, 'magnus_tolerance', 1e-7)
-
-    fock_orth_t = rt_scf._fock_orth
-    mo_coeff_orth = rt_scf.rotate_coeff_to_orth(rt_scf._scf.mo_coeff)
-    hermitian = len(rt_scf._potential) == 0
-    dt = rt_scf.timestep
-
-    # Half-step propagator at t (does not change during iteration)
-    U_half_t = _unitary_propagator(fock_orth_t, dt / 2, hermitian=hermitian)
-    C_half = np.matmul(U_half_t, mo_coeff_orth)
-
-    # Predictor for F(t+dt): linear extrapolation from t and t-dt
-    if hasattr(rt_scf, '_etrs_fock_prev'):
-        fock_pred_pdt = 2 * fock_orth_t - rt_scf._etrs_fock_prev
-    else:
-        fock_pred_pdt = fock_orth_t  # first step: no history, use F(t)
-
-    rt_scf.update_time()
-
-    den_ao_pdt_old = None
-    for iteration in range(maxiter):
-        U_half_pdt = _unitary_propagator(fock_pred_pdt, dt / 2, hermitian=hermitian)
-        mo_coeff_orth_pdt = np.matmul(U_half_pdt, C_half)
-        mo_coeff_ao_pdt = rt_scf.rotate_coeff_to_ao(mo_coeff_orth_pdt)
-        den_ao_pdt = rt_scf._scf.make_rdm1(mo_coeff=mo_coeff_ao_pdt,
-                                            mo_occ=rt_scf.occ)
-        fock_orth_pdt = rt_scf.get_fock_orth(den_ao_pdt)
-
-        if (den_ao_pdt_old is not None and
-                np.linalg.norm(den_ao_pdt - den_ao_pdt_old) < tolerance):
-            break
-
-        fock_pred_pdt = fock_orth_pdt
-        den_ao_pdt_old = np.copy(den_ao_pdt)
-        rt_scf._scf.mo_coeff = mo_coeff_ao_pdt
-        rt_scf.den_ao = den_ao_pdt
-
-    if (den_ao_pdt_old is not None and
-            np.linalg.norm(den_ao_pdt - den_ao_pdt_old) > tolerance):
-        rt_scf._log.error('ETRS integrator failed to converge. Increase magnus_maxiter, or decrease timestep.')
-    rt_scf._log.debug1(f'ETRS converged on iteration: {iteration}')
-
-    rt_scf._etrs_fock_prev = fock_orth_t
-    rt_scf._scf.mo_coeff = mo_coeff_ao_pdt
-    rt_scf.den_ao = den_ao_pdt
-    rt_scf._fock_orth = fock_orth_pdt
-
 
 def etrs(rt_scf):
     '''
