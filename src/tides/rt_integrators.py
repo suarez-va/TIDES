@@ -102,6 +102,74 @@ def magnus_interpol(rt_scf):
     rt_scf._fock_orth = fock_orth_pdt
     rt_scf._fock_orth_n12dt = fock_orth_p12dt
 
+def etrs(rt_scf):
+    '''
+    ETRS: Enforced Time-Reversal Symmetry propagator.
+    C(t+dt) = exp(-i*dt/2*F(t+dt)) @ exp(-i*dt/2*F(t)) @ C(t)
+
+    Self-consistent: F(t+dt) depends on C(t+dt) which depends on F(t+dt).
+    Algorithm:
+      1. Predictor: linearly extrapolate F_pred(t+dt) = 2*F(t) - F(t-dt)
+      2. U_t = exp(-i*dt/2*F(t))
+      3. Iterate:
+           C_pred = exp(-i*dt/2*F_pred) @ U_t @ C(t)
+           Build F_new(t+dt) from C_pred
+           If converged, accept
+           Else F_pred = F_new, repeat
+    Unitary and time-reversible by construction → excellent energy conservation.
+    Cost: 2+ Fock builds/step (1 predictor build + 1 per iteration).
+    See: Castro et al., J. Chem. Phys. 121, 3425 (2004).
+
+    Uses magnus_maxiter and magnus_tolerance from rt_scf if present.
+    '''
+    maxiter   = getattr(rt_scf, 'magnus_maxiter', 20)
+    tolerance = getattr(rt_scf, 'magnus_tolerance', 1e-7)
+
+    fock_orth_t = rt_scf._fock_orth
+    mo_coeff_orth = rt_scf.rotate_coeff_to_orth(rt_scf._scf.mo_coeff)
+    hermitian = len(rt_scf._potential) == 0
+    dt = rt_scf.timestep
+
+    # Half-step propagator at t (does not change during iteration)
+    U_half_t = _unitary_propagator(fock_orth_t, dt / 2, hermitian=hermitian)
+    C_half = np.matmul(U_half_t, mo_coeff_orth)
+
+    # Predictor for F(t+dt): linear extrapolation from t and t-dt
+    if hasattr(rt_scf, '_etrs_fock_prev'):
+        fock_pred_pdt = 2 * fock_orth_t - rt_scf._etrs_fock_prev
+    else:
+        fock_pred_pdt = fock_orth_t  # first step: no history, use F(t)
+
+    rt_scf.update_time()
+
+    den_ao_pdt_old = None
+    for iteration in range(maxiter):
+        U_half_pdt = _unitary_propagator(fock_pred_pdt, dt / 2, hermitian=hermitian)
+        mo_coeff_orth_pdt = np.matmul(U_half_pdt, C_half)
+        mo_coeff_ao_pdt = rt_scf.rotate_coeff_to_ao(mo_coeff_orth_pdt)
+        den_ao_pdt = rt_scf._scf.make_rdm1(mo_coeff=mo_coeff_ao_pdt,
+                                            mo_occ=rt_scf.occ)
+        fock_orth_pdt = rt_scf.get_fock_orth(den_ao_pdt)
+
+        if (den_ao_pdt_old is not None and
+                np.linalg.norm(den_ao_pdt - den_ao_pdt_old) < tolerance):
+            break
+
+        fock_pred_pdt = fock_orth_pdt
+        den_ao_pdt_old = np.copy(den_ao_pdt)
+        rt_scf._scf.mo_coeff = mo_coeff_ao_pdt
+        rt_scf.den_ao = den_ao_pdt
+
+    if (den_ao_pdt_old is not None and
+            np.linalg.norm(den_ao_pdt - den_ao_pdt_old) > tolerance):
+        rt_scf._log.error('ETRS integrator failed to converge. Increase magnus_maxiter, or decrease timestep.')
+    rt_scf._log.debug1(f'ETRS converged on iteration: {iteration}')
+
+    rt_scf._etrs_fock_prev = fock_orth_t
+    rt_scf._scf.mo_coeff = mo_coeff_ao_pdt
+    rt_scf.den_ao = den_ao_pdt
+    rt_scf._fock_orth = fock_orth_pdt
+
 
 def etrs(rt_scf):
     '''
@@ -218,149 +286,138 @@ def rk4(rt_scf):
     rt_scf.den_ao = rt_scf._scf.make_rdm1(mo_occ=rt_scf.occ)
     rt_scf._fock_orth = rt_scf.get_fock_orth(rt_scf.den_ao)
 
-def rk4cr(rt_cr,fo,fs,fc,eShift):
+def rk4cr(rt_cr,fo,fs,fc,eShift,step):
     '''
     i d/dt|r> = sum(s) X(sr)|s>
     i d/dt C(I) = sum(J) H(JI)C(J)-X(JI)C(J)
     '''
     # Note function f in comments represents derivative equation
 
-    # Call to update MO coefficient at new time step
-    def updateMO(moNew):
-        rt_cr.mo_to_ao = np.copy(moNew)
-        rt_cr.ao_to_mo = rt_cr.get_ao_to_mo()
-        rt_cr._scf.mo_coeff[:,:rt_cr.numP] = np.copy(rt_cr.mo_to_ao)
-        rt_cr._h1e_mo = rt_cr.get_h1e_mo()
-        rt_cr._h2e_mo = rt_cr.get_h2e_mo()
-        rt_cr.mo_to_orth = rt_cr.get_mo_to_orth()
-        rt_cr.orth_to_mo = rt_cr.mo_to_orth.conj().T
-
-    # Call to update Hamiltonian at new time step
-    def updateHam():
-        rt_cr._h1e_orth = rt_cr.get_h1e_orth()
-        rt_cr._h1e_mo = rt_cr.get_h1e_mo()
-        rt_cr._h2e_orth = rt_cr.get_h2e_orth()
-        rt_cr._h2e_mo = rt_cr.get_h2e_mo()
-
     # Collect initial terms
-    x_mat = rt_cr.get_x()
-    e0, h1Act, h2Act = rt_cr.get_embH(x_mat)
-    reci0 = np.copy(rt_cr._scf.ci.real)
-    imci0 = np.copy(rt_cr._scf.ci.imag)
-    c0 = np.copy(rt_cr._scf.ci)
+    xAct,xAo = rt_cr.get_xMat()
+    e0, h1Act, h2Act = rt_cr.get_actH(xAct)
+    ci0 = np.copy(rt_cr._scf.ci)
     mo0 = np.copy(rt_cr.mo_to_ao)
     
     # k1 = f(t0,y0)
-    ck1 = (-1j*applyham_pyscf.apply_ham_pyscf_check(reci0,h1Act,h2Act,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e0-eShift))+(applyham_pyscf.apply_ham_pyscf_check(imci0,h1Act,h2Act,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e0-eShift))
-    rk1 = -1j*np.matmul(rt_cr.mo_to_ao,x_mat)
-
-    # c1 and mo1 represent y0 + k1*timestep/2
-    c1 = rt_cr._scf.ci + (rt_cr.timestep*ck1/2)
-    mo1 = rt_cr.mo_to_ao +(rt_cr.timestep*rk1/2)
+    if rt_cr.ras == False:
+        cik1 = (-1j*applyham_pyscf.apply_ham_pyscf_check(rt_cr._scf.ci.real,h1Act,h2Act,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e0-eShift))+(applyham_pyscf.apply_ham_pyscf_check(rt_cr._scf.ci.imag,h1Act,h2Act,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e0-eShift))
+    else:
+        cik1 = (-1j*applyham_pyscf.apply_ham_pyscf_complex_ras(rt_cr._scf.ci.real,h1Act,h2Act,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e0-eShift,rt_cr.ind))+(applyham_pyscf.apply_ham_pyscf_complex(rt_cr._scf.ci.imag,h1Act,h2Act,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e0-eShift,rt_cr.ind))
+    mok1 = -1j*xAo
 
     # Update system
-    if rt_cr._castype == 'CASSCF':
-        updateMO(mo1)
     rt_cr.update_time()
-    rt_cr._scf.ci = np.copy(c1)
+    newAO = rt_cr.apply_potential()
+    if rt_cr._castype == 'CASSCF':
+        rt_cr.updateMO(rt_cr.mo_to_ao +(rt_cr.timestep*mok1/2),newAO)
+    elif len(rt_cr._potential) > 0:
+        rt_cr.updateHam(newAO)
+    rt_cr._scf.ci = rt_cr._scf.ci + (rt_cr.timestep*cik1/2)
+    rt_cr.casrdm1, rt_cr.casrdm2 = rt_cr.get_casrdm12()
     rt_cr.den_ao = rt_cr.get_den_ao()
-    if len(rt_cr._potential) > 0:
-        updateHam()
-    x2 = rt_cr.get_x()
-    e2, h1a2, h2a2 = rt_cr.get_embH(x2)
-    reci1 = np.copy(c1.real)
-    imci1 = np.copy(c1.imag)
+
+    # Collect new terms for equations of motion
+    xp2,xao2 = rt_cr.get_xMat()
+    e2, h1a2, h2a2 = rt_cr.get_actH(xp2)
 
     # k2 = f(t0 + timestep/2,y0 + k1*timestep/2)
-    ck2 = (-1j*applyham_pyscf.apply_ham_pyscf_check(reci1,h1a2,h2a2,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e2-eShift))+(applyham_pyscf.apply_ham_pyscf_check(imci1,h1a2,h2a2,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e2-eShift))
-    rk2 = -1j*np.matmul(rt_cr.mo_to_ao,x2)
+    if rt_cr.ras == False:
+        cik2 = (-1j*applyham_pyscf.apply_ham_pyscf_check(rt_cr._scf.ci.real,h1a2,h2a2,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e2-eShift))+(applyham_pyscf.apply_ham_pyscf_check(rt_cr._scf.ci.imag,h1a2,h2a2,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e2-eShift))
+    else:
+        cik2 = (-1j*applyham_pyscf.apply_ham_pyscf_complex_ras(rt_cr._scf.ci.real,h1a2,h2a2,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e2-eShift,rt_cr.ind))+(applyham_pyscf.apply_ham_pyscf_complex(rt_cr._scf.ci.imag,h1a2,h2a2,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e2-eShift,rt_cr.ind))
+    mok2 = -1j*xao2
 
     # c2 and mo2 represent y0 + k2*timestep/2
-    c2 = c0 + (rt_cr.timestep*ck2/2)
-    mo2 = mo0 + (rt_cr.timestep*rk2/2)
 
     # Update system. Note time didn't increment but ci coefficients and molecular orbitals are updated
     if rt_cr._castype == 'CASSCF':
-        updateMO(mo2)
-    rt_cr._scf.ci = np.copy(c2)
+        rt_cr.updateMO(mo0 + (rt_cr.timestep*mok2/2),newAO)
+    rt_cr._scf.ci = ci0 + (rt_cr.timestep*cik2/2)
+    rt_cr.casrdm1, rt_cr.casrdm2 = rt_cr.get_casrdm12()
     rt_cr.den_ao = rt_cr.get_den_ao()
-    x3 = rt_cr.get_x()
-    e3, h1a3, h2a3 = rt_cr.get_embH(x3)
-    reci2 = np.copy(c2.real)
-    imci2 = np.copy(c2.imag)
+
+    # Collect new terms for equations of motion
+    xp3,xao3 = rt_cr.get_xMat()
+    e3, h1a3, h2a3 = rt_cr.get_actH(xp3)
 
     # k3 = f(t0 + timestep/2,y0 + k2*timestep/2)
-    ck3 = (-1j*applyham_pyscf.apply_ham_pyscf_check(reci2,h1a3,h2a3,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e3-eShift))+(applyham_pyscf.apply_ham_pyscf_check(imci2,h1a3,h2a3,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e3-eShift))
-    rk3 = -1j*np.matmul(rt_cr.mo_to_ao,x3)
+    if rt_cr.ras == False:
+        cik3 = (-1j*applyham_pyscf.apply_ham_pyscf_check(rt_cr._scf.ci.real,h1a3,h2a3,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e3-eShift))+(applyham_pyscf.apply_ham_pyscf_check(rt_cr._scf.ci.imag,h1a3,h2a3,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e3-eShift))
+    else:
+        cik3 = (-1j*applyham_pyscf.apply_ham_pyscf_complex_ras(rt_cr._scf.ci.real,h1a3,h2a3,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e3-eShift,rt_cr.ind))+(applyham_pyscf.apply_ham_pyscf_complex(rt_cr._scf.ci.imag,h1a3,h2a3,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e3-eShift,rt_cr.ind))
+    mok3 = -1j*xao3
 
     # c3 and mo3 represent y0 + k3*timestep
-    c3 = c0 + (rt_cr.timestep*ck3)
-    mo3 = mo0 + (rt_cr.timestep*rk3)
 
     # Update system
     rt_cr.update_time()
+    newAO2 = rt_cr.apply_potential()
     if rt_cr._castype == 'CASSCF':
-        updateMO(mo3)
-    rt_cr._scf.ci = np.copy(c3)
+        rt_cr.updateMO(mo0 + (rt_cr.timestep*mok3),newAO2)
+    elif len(rt_cr._potential) > 0:
+        rt_cr.updateHam(newAO2)
+    rt_cr._scf.ci = ci0 + (rt_cr.timestep*cik3)
+    rt_cr.casrdm1, rt_cr.casrdm2 = rt_cr.get_casrdm12()
     rt_cr.den_ao = rt_cr.get_den_ao()
-    if len(rt_cr._potential) > 0:
-        updateHam()
-    x4 = rt_cr.get_x()
-    e4, h1a4, h2a4 = rt_cr.get_embH(x4)
-    reci3 = np.copy(c3.real)
-    imci3 = np.copy(c3.imag)
+
+    # Collect new terms for equations of motion
+    xp4,xao4 = rt_cr.get_xMat()
+    e4, h1a4, h2a4 = rt_cr.get_actH(xp4)
 
     # k4 = f(t0 + timestep,y0 + k3*timestep)
-    ck4 = (-1j*applyham_pyscf.apply_ham_pyscf_check(reci3,h1a4,h2a4,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e4-eShift))+(applyham_pyscf.apply_ham_pyscf_check(imci3,h1a4,h2a4,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e4-eShift))
-    rk4 = -1j*np.matmul(rt_cr.mo_to_ao,x4)
+    if rt_cr.ras == False:
+        cik4 = (-1j*applyham_pyscf.apply_ham_pyscf_check(rt_cr._scf.ci.real,h1a4,h2a4,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e4-eShift))+(applyham_pyscf.apply_ham_pyscf_check(rt_cr._scf.ci.imag,h1a4,h2a4,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e4-eShift))
+    else:
+        cik4 = (-1j*applyham_pyscf.apply_ham_pyscf_complex_ras(rt_cr._scf.ci.real,h1a4,h2a4,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e4-eShift,rt_cr.ind))+(applyham_pyscf.apply_ham_pyscf_complex(rt_cr._scf.ci.imag,h1a4,h2a4,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e4-eShift,rt_cr.ind))
+    mok4 = -1j*xao4
 
     # y1 = (timestep/6)(k1 + 2*k2 + 2*k3 + k4)
-    cf = c0 + ((rt_cr.timestep/6)*(ck1+(2*ck2)+(2*ck3)+ck4))
-    mof = mo0 + ((rt_cr.timestep/6)*(rk1+(2*rk2)+(2*rk3)+rk4))
 
     # Update system. Note time doesn't increment
     if rt_cr._castype == 'CASSCF':
-        updateMO(mof)
-    rt_cr._scf.ci = np.copy(cf)
-    #print(cf)
+        rt_cr.updateMO(mo0 + ((rt_cr.timestep/6)*(mok1+(2*mok2)+(2*mok3)+mok4)),newAO2)
+    rt_cr._scf.ci = ci0 + ((rt_cr.timestep/6)*(cik1+(2*cik2)+(2*cik3)+cik4))
+    rt_cr.casrdm1, rt_cr.casrdm2 = rt_cr.get_casrdm12()
     rt_cr.den_ao = rt_cr.get_den_ao()
 
-    # Collect output file checks
-    ef, h1f, h2f = rt_cr.get_embH(np.zeros((rt_cr.numP,rt_cr.numP)))
-    output = np.zeros(3)
-    output[0] = rt_cr.current_time
-    output[1] = fci_mod.get_FCI_E(
-                h1f,
-                h2f,
-                ef,
-                cf,
-                rt_cr._scf.ncas,
-                rt_cr._scf.nelecas[0],
-                rt_cr._scf.nelecas[1],
-                gen=False,
-            )
-    output[2] = np.real(np.sum(np.diag(rt_cr.den_ao@rt_cr.ovlp))) # Gives number of electrons. Shouldn't ever change.
-    print(output[2])
+    if np.mod(step,rt_cr.frequency) == 0:
+        # Collect output file checks
+        ef, h1f, h2f = rt_cr.get_actH(np.zeros((rt_cr.numP,rt_cr.numP)))
+        output = np.zeros(3)
+        output[0] = rt_cr.current_time
+        output[1] = fci_mod.get_FCI_E(
+                    h1f,
+                    h2f,
+                    ef,
+                    rt_cr._scf.ci,
+                    rt_cr._scf.ncas,
+                    rt_cr._scf.nelecas[0],
+                    rt_cr._scf.nelecas[1],
+                    gen=False,
+                )
+        output[2] = np.real(np.sum(np.diag(rt_cr.den_ao@rt_cr.ovlp))) # Gives number of electrons. Shouldn't ever change.
+        print(output[2])
+        '''
+        # Print MO occupation numbers for monitoring purposes
+        corr1RDMmo = np.zeros((rt_cr.numP,rt_cr.numP)).astype(np.complex128)
+        for a in range(rt_cr._scf.ncore):
+            corr1RDMmo[a][a] = 2
+        for a in range(rt_cr._scf.ncas):
+            for b in range(rt_cr._scf.ncas):
+                corr1RDMmo[a+rt_cr._scf.ncore][b+rt_cr._scf.ncore] = rt_cr.casrdm1[a][b]
+        print(np.real(np.diag(corr1RDMmo)))
+        '''
+        # corrdens represents AO occupation
+        diagcorr1RDM = np.real(np.diag(rt_cr.den_ao@rt_cr.ovlp))
+        corrdens = np.copy(diagcorr1RDM)
+        corrdens = np.insert(corrdens, 0, rt_cr.current_time)
     
-    # Print MO occupation numbers for monitoring purposes
-    corr1RDMmo = np.zeros((rt_cr.numP,rt_cr.numP)).astype(np.complex128)
-    for a in range(rt_cr._scf.ncore):
-        corr1RDMmo[a][a] = 2
-    for a in range(rt_cr._scf.ncas):
-        for b in range(rt_cr._scf.ncas):
-            corr1RDMmo[a+rt_cr._scf.ncore][b+rt_cr._scf.ncore] = rt_cr.casrdm1[a][b]
-    print(np.real(np.diag(corr1RDMmo)))
-
-    # corrdens represents AO occupation
-    diagcorr1RDM = np.real(np.diag(rt_cr.den_ao@rt_cr.ovlp))
-    corrdens = np.copy(diagcorr1RDM)
-    corrdens = np.insert(corrdens, 0, rt_cr.current_time)
-    
-    np.savetxt(fo, output.reshape(1, output.shape[0]), fs)
-    fo.flush()
-    np.savetxt(fc, corrdens.reshape(1, corrdens.shape[0]), fs)
-    fc.flush()
-    sys.stdout.flush()
+        np.savetxt(fo, output.reshape(1, output.shape[0]), fs)
+        fo.flush()
+        np.savetxt(fc, corrdens.reshape(1, corrdens.shape[0]), fs)
+        fc.flush()
+        sys.stdout.flush()
 
 def vv(rt_cr,fo,fs,fc,eShift):
     '''
@@ -369,22 +426,18 @@ def vv(rt_cr,fo,fs,fc,eShift):
     For TDCASCI only
     '''
 
-    # Update Hamiltonian whenever time increments
-    def updateHam():
-        rt_cr._h1e_orth = rt_cr.get_h1e_orth()
-        rt_cr._h1e_mo = rt_cr.get_h1e_mo()
-        rt_cr._h2e_orth = rt_cr.get_h2e_orth()
-        rt_cr._h2e_mo = rt_cr.get_h2e_mo()
-
     # Initialize terms
-    x_mat = rt_cr.get_x()
+    xp0, _ = rt_cr.get_xMat()
     q0 = np.copy(rt_cr._scf.ci.real)
 
     if rt_cr.firstStep == True:
-        e1, h1a1, h2a1 = rt_cr.get_embH(x_mat)
+        e1, h1a1, h2a1 = rt_cr.get_actH(xp0)
         p0 = np.copy(rt_cr._scf.ci.imag)
         # Eq 7
-        pDot0 = -applyham_pyscf.apply_ham_pyscf_check(q0,h1a1,h2a1,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e1-eShift).astype(np.float64)
+        if rt_cr.ras == False:
+            pDot0 = -applyham_pyscf.apply_ham_pyscf_check(q0,h1a1,h2a1,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e1-eShift).astype(np.float64)
+        else:
+            pDot0 = -applyham_pyscf.apply_ham_pyscf_complex_ras(q0,h1a1,h2a1,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e1-eShift,rt_cr.ind).astype(np.float64)
         # Eq 8
         pHalfH = p0 + (rt_cr.timestep*pDot0/2)
 
@@ -394,23 +447,32 @@ def vv(rt_cr,fo,fs,fc,eShift):
 
     # Increment Time
     rt_cr.update_time()
+    newAO = rt_cr.apply_potential()
     if len(rt_cr._potential) > 0:
-        updateHam()
+        rt_cr.updateHam(newAO)
 
-    e2, h1a2, h2a2 = rt_cr.get_embH(x_mat)
+    e2, h1a2, h2a2 = rt_cr.get_actH(xp0)
     # Eq 9/13
-    qDotHalfH = applyham_pyscf.apply_ham_pyscf_check(pHalfH,h1a2,h2a2,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e2-eShift).astype(np.float64)
+
+    if rt_cr.ras == False:
+        qDotHalfH = applyham_pyscf.apply_ham_pyscf_check(pHalfH,h1a2,h2a2,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e2-eShift).astype(np.float64)
+    else:
+        qDotHalfH = applyham_pyscf.apply_ham_pyscf_complex_ras(pHalfH,h1a2,h2a2,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e2-eShift,rt_cr.ind).astype(np.float64)
     # Eq 10/14
     qH = q0 + (rt_cr.timestep*qDotHalfH)
 
     # Increment Time
     rt_cr.update_time()
+    newAO2 = rt_cr.apply_potential()
     if len(rt_cr._potential) > 0:
-        updateHam()
+        rt_cr.updateHam(newAO2)
 
-    e3, h1a3, h2a3 = rt_cr.get_embH(x_mat)
+    e3, h1a3, h2a3 = rt_cr.get_actH(xp0)
     # Eq 11/15
-    pDotH = -applyham_pyscf.apply_ham_pyscf_check(qH,h1a3,h2a3,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e3-eShift).astype(np.float64)
+    if rt_cr.ras == False:
+        pDotH = -applyham_pyscf.apply_ham_pyscf_check(qH,h1a3,h2a3,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e3-eShift).astype(np.float64)
+    else:
+        pDotH = -applyham_pyscf.apply_ham_pyscf_complex_ras(qH,h1a3,h2a3,rt_cr._scf.nelecas[0],rt_cr._scf.nelecas[1],rt_cr._scf.ncas,e3-eShift,rt_cr.ind).astype(np.float64)
     # Eq 16
     pH = pHalfH + (rt_cr.timestep*pDotH/2)
 
@@ -419,10 +481,11 @@ def vv(rt_cr,fo,fs,fc,eShift):
     rt_cr.pMinusHalf = np.copy(pHalfH) # Preps Eq 12 for next step
     rt_cr.pDotH = np.copy(pDotH) # Preps Eq 12 for next step
     rt_cr.firstStep = False
+    rt_cr.casrdm1, rt_cr.casrdm2 = rt_cr.get_casrdm12()
     rt_cr.den_ao = rt_cr.get_den_ao()
 
     # Collect output file checks
-    ef, h1f, h2f = rt_cr.get_embH(np.zeros((rt_cr.numP,rt_cr.numP)))
+    ef, h1f, h2f = rt_cr.get_actH(np.zeros((rt_cr.numP,rt_cr.numP)))
     output = np.zeros(3)
     output[0] = rt_cr.current_time
     output[1] = fci_mod.get_FCI_E(
