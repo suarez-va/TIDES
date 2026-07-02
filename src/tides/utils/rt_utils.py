@@ -1,7 +1,7 @@
 import numpy as np
 from pyscf import scf
-from tides.basis_utils import _match_fragment_atom, _mask_fragment_basis, noscfbasis, _read_mol, _write_mol
-from tides import ehrenfest_force
+from tides.utils.basis_utils import _match_fragment_atom, _mask_fragment_basis, noscfbasis, _read_mol, _write_mol
+from tides.nuclear import ehrenfest_force
 
 '''
 Real-time Utilities

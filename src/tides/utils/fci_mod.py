@@ -1,8 +1,8 @@
 # Mod that contains subroutines associated with pyscf FCI calculations
 
 import numpy as np
-from tides import utils as utils
-from tides import applyham_pyscf as applyham_pyscf
+from tides.utils import utils
+from tides.utils import applyham_pyscf
 import pyscf.fci
 import scipy.linalg as la
 from pyscf import gto, scf, ao2mo

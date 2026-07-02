@@ -1,8 +1,8 @@
 import math
 import numpy as np
 from scipy.linalg import expm
-from tides import applyham_pyscf as applyham_pyscf
-from tides import fci_mod as fci_mod
+from tides.utils import applyham_pyscf
+from tides.utils import fci_mod
 import sys
 
 '''
