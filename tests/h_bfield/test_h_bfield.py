@@ -1,8 +1,9 @@
 import pytest
 from pathlib import Path
 from pyscf import gto, scf, dft
-from tides import rt_scf, rt_vapp, parse_rt
-from tides.staticfield import static_bfield
+from tides import RT_SCF
+from tides.analysis import parse_rt
+from tides import static_bfield
 
 dir_path = str(Path(__file__).resolve().parent)
 
@@ -17,7 +18,7 @@ def test_h_bfield():
     mf = scf.ghf.GHF(mol)
     mf.kernel()
     static_bfield(mf, [0,0,mag_z])
-    rt_mf = rt_scf.RT_SCF(mf, 1.0, 25, filename = dir_path + '/output.out')
+    rt_mf = RT_SCF(mf, 1.0, 25, filename = dir_path + '/output.out')
     rt_mf.prop = 'magnus_step' 
     rt_mf.observables.update(mag=True)
     rt_mf.kernel()

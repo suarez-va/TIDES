@@ -3,10 +3,10 @@ from scipy.linalg import inv
 from pyscf import gto
 from pyscf.scf import addons
 from pyscf.lib import logger
-from tides.rt_prop import propagate
-from tides import rt_observables
-from tides import rt_output
-from tides.rt_utils import restart_from_chkfile
+from tides.propagators.rt_prop import propagate
+from tides.observables import rt_observables
+from tides.observables import rt_output
+from tides.utils.rt_utils import restart_from_chkfile
 import os
 
 

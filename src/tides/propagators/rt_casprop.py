@@ -1,7 +1,8 @@
 import numpy as np
-from tides import rt_observables, rt_integrators
-from tides import applyham_pyscf as applyham_pyscf
-from tides.rt_utils import update_chkfile, print_info
+from tides.observables import rt_observables
+from tides.propagators import rt_integrators
+from tides.utils import applyham_pyscf
+from tides.utils.rt_utils import update_chkfile, print_info
 
 # Real-Time Propagation for CAS/RAS CI/SCF
 

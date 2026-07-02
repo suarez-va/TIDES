@@ -1,10 +1,8 @@
 import numpy as np
-from tides import rt_output
-from tides.basis_utils import _mask_fragment_basis
-from tides.basis_utils import _mask_fragment_basis
-from tides.hirshfeld import hirshfeld_partition, get_weights
-from tides.rt_utils import _update_mo_coeff_print
-from tides.rt_utils import _update_mo_coeff_print
+from tides.observables import rt_output
+from tides.utils.basis_utils import _mask_fragment_basis
+from tides.observables.hirshfeld import hirshfeld_partition, get_weights
+from tides.utils.rt_utils import _update_mo_coeff_print
 from pyscf import lib
 from pyscf.lib import logger
 from pyscf.tools import cubegen
@@ -202,7 +200,7 @@ def get_hirshfeld_i_charge(rt_scf, den_ao):
     HORTON Hirshfeld-I charges; requires a ProAtomDB (atoms.h5).
     """
     import os
-    from tides.horton_part import compute_hirshfeld_i_from_pyscf, HortonUnavailableError, create_proatomdb_from_pyscf
+    from tides.observables.horton_part import compute_hirshfeld_i_from_pyscf, HortonUnavailableError, create_proatomdb_from_pyscf
     
     # Try to get the database path from the environment or rt_scf attribute
     padb_path = getattr(rt_scf, 'horton_proatomdb_path', None) or os.environ.get('HORTON_ATOMDB', None)
@@ -246,7 +244,7 @@ def get_hirshfeld_i_charge(rt_scf, den_ao):
     except HortonUnavailableError as e:
         # Fall back to MBIS if HORTON is not available
         print(f"Warning: {str(e)}. Falling back to MBIS charges.")
-        from tides.horton_part import compute_mbis_from_pyscf
+        from tides.observables.horton_part import compute_mbis_from_pyscf
         try:
             res = compute_mbis_from_pyscf(rt_scf._scf, den_ao)
             charges = res["charges"]

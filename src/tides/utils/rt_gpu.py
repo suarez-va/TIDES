@@ -43,8 +43,8 @@ def wrap_gpu_mf(mf_gpu):
     ::
 
         from gpu4pyscf import dft as gpu_dft
-        from tides import rt_scf
-        from tides.rt_gpu import wrap_gpu_mf
+        from tides.methods import rt_scf
+        from tides.utils.rt_gpu import wrap_gpu_mf
 
         mf_gpu = gpu_dft.uks.UKS(mol).density_fit()
         mf_gpu.xc = 'CAMB3LYP'

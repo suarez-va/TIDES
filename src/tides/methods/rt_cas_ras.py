@@ -5,10 +5,10 @@ from scipy.linalg import inv
 from pyscf import mcscf, fci
 from pyscf.scf import addons
 from pyscf.lib import logger
-from tides.rt_casprop import propagate
-from tides import rt_observables
-from tides import fci_mod as fci_mod
-from tides.rt_utils import restart_from_chkfile
+from tides.propagators.rt_casprop import propagate
+from tides.observables import rt_observables
+from tides.utils import fci_mod
+from tides.utils.rt_utils import restart_from_chkfile
 
 '''
 TD-RAS-SCF is not implemented

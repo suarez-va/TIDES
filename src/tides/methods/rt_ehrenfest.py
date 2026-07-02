@@ -1,11 +1,11 @@
 import numpy as np
 from pyscf import gto, dft, scf, grad
-from tides.grad_addons import complex_veff_
-from tides import ehrenfest_force
-from tides.rt_scf import RT_SCF
-from tides.rt_nuclei import Nuc
-from tides.rt_utils import _sym_orth, get_scf_orbitals
-from tides.rt_utils import restart_from_chkfile
+from tides.nuclear.grad_addons import complex_veff_
+from tides.nuclear import ehrenfest_force
+from tides.methods.rt_scf import RT_SCF
+from tides.nuclear.rt_nuclei import Nuc
+from tides.utils.rt_utils import _sym_orth, get_scf_orbitals
+from tides.utils.rt_utils import restart_from_chkfile
 import os
 
 
