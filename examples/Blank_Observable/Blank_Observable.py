@@ -17,13 +17,13 @@ h2o.kernel()
 rt_h2o = RT_SCF(h2o, 0.2, 10, filename=None, prop='magnus_interpol', frequency=1, orth=None, chkfile=None, verbose=3)
 
 # Define blank custom observable
-def get_custom_observable(rt_scf, den_ao):
-    # rt_scf and den_ao are required arguments
-    rt_scf._custom_observable = None
+def get_custom_observable(rt_obj):
+    # rt_obj (an RT_SCF or CAS object) is the only argument; read density via rt_obj.den_ao
+    rt_obj._custom_observable = None
 
-def print_custom_observable(rt_scf):
+def print_custom_observable(rt_obj):
     # Format output however you want
-    rt_scf._log.note(f'HERE IS THE CUSTOM OBSERVABLE: {rt_scf._custom_observable}')
+    rt_obj._log.note(f'HERE IS THE CUSTOM OBSERVABLE: {rt_obj._custom_observable}')
 
 
 # Add these functions to rt_h2o._observables_functions dictionary and declare the custom observable in rt_h2o.observables dictionary.
