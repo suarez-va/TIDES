@@ -1,0 +1,180 @@
+========================= 
+Beginning Propagation For: 
+
+	 Object Type: GKS
+	 Basis Set: 6-31G
+	 Mol Length: 2
+
+	 Exchange-Correlation Functional: B3LYP
+
+Propagation Settings: 
+
+	 Real-Time SCF w/ Ehrenfest Dynamics
+	 Integrator: magnus_interpol
+	 Max time (AU): 0.2
+	 Time step (AU): 0.04
+	 Nuclear Position Update Frequency: 1
+	 Nuclear Force Update Frequency: 1
+	 Observables: 
+
+ 	 	 energy
+ 	 	 mag
+
+
+Total Energy (AU): -0.9090152502250436 
+
+Total Kinetic Energy (AU): 0.26643258577338125 
+
+Atom Kinetic Energies (AU):
+ H 0.13321629288669062
+ H 0.13321629288669062
+ 
+Total Magnetization [X, Y, Z]: 0.0 0.0 4.0933939202137933e-16 
+
+========================= 
+
+Current Time (AU): 0.00000000 
+
+Total Energy (AU): -0.9090152502250436 
+
+Total Kinetic Energy (AU): 0.26643258577338125 
+
+Atom Kinetic Energies (AU):
+ H 0.13321629288669062
+ H 0.13321629288669062
+ 
+Total Magnetization [X, Y, Z]: 0.0 0.0 4.0933939202137933e-16 
+
+========================= 
+
+Total Energy (AU): -0.9090152501171449 
+
+Total Kinetic Energy (AU): 0.26642749420192874 
+
+Atom Kinetic Energies (AU):
+ H 0.13321374710096437
+ H 0.13321374710096437
+ 
+Total Magnetization [X, Y, Z]: 0.0 0.0 4.794319772116035e-16 
+
+========================= 
+
+Current Time (AU): 0.04000000 
+
+Total Energy (AU): -0.9090152501171449 
+
+Total Kinetic Energy (AU): 0.26642749420192874 
+
+Atom Kinetic Energies (AU):
+ H 0.13321374710096437
+ H 0.13321374710096437
+ 
+Total Magnetization [X, Y, Z]: 0.0 0.0 4.794319772116035e-16 
+
+========================= 
+
+Total Energy (AU): -0.909015250010955 
+
+Total Kinetic Energy (AU): 0.26642192404922377 
+
+Atom Kinetic Energies (AU):
+ H 0.13321096202461188
+ H 0.13321096202461188
+ 
+Total Magnetization [X, Y, Z]: 0.0 0.0 6.695986559853968e-16 
+
+========================= 
+
+Current Time (AU): 0.08000000 
+
+Total Energy (AU): -0.909015250010955 
+
+Total Kinetic Energy (AU): 0.26642192404922377 
+
+Atom Kinetic Energies (AU):
+ H 0.13321096202461188
+ H 0.13321096202461188
+ 
+Total Magnetization [X, Y, Z]: 0.0 0.0 6.695986559853968e-16 
+
+========================= 
+
+Total Energy (AU): -0.9090152499065103 
+
+Total Kinetic Energy (AU): 0.26641587709564657 
+
+Atom Kinetic Energies (AU):
+ H 0.13320793854782328
+ H 0.13320793854782328
+ 
+Total Magnetization [X, Y, Z]: 0.0 0.0 3.4965040959646727e-16 
+
+========================= 
+
+Current Time (AU): 0.12000000 
+
+Total Energy (AU): -0.9090152499065103 
+
+Total Kinetic Energy (AU): 0.26641587709564657 
+
+Atom Kinetic Energies (AU):
+ H 0.13320793854782328
+ H 0.13320793854782328
+ 
+Total Magnetization [X, Y, Z]: 0.0 0.0 3.4965040959646727e-16 
+
+========================= 
+
+Total Energy (AU): -0.90901524980385 
+
+Total Kinetic Energy (AU): 0.2664093553717725 
+
+Atom Kinetic Energies (AU):
+ H 0.13320467768588626
+ H 0.13320467768588626
+ 
+Total Magnetization [X, Y, Z]: 0.0 0.0 2.7935953928724677e-16 
+
+========================= 
+
+Current Time (AU): 0.16000000 
+
+Total Energy (AU): -0.90901524980385 
+
+Total Kinetic Energy (AU): 0.2664093553717725 
+
+Atom Kinetic Energies (AU):
+ H 0.13320467768588626
+ H 0.13320467768588626
+ 
+Total Magnetization [X, Y, Z]: 0.0 0.0 2.7935953928724677e-16 
+
+========================= 
+
+Total Energy (AU): -0.9090152497029962 
+
+Total Kinetic Energy (AU): 0.2664023611564066 
+
+Atom Kinetic Energies (AU):
+ H 0.1332011805782033
+ H 0.1332011805782033
+ 
+Total Magnetization [X, Y, Z]: 0.0 0.0 2.2558303212262694e-16 
+
+========================= 
+
+Current Time (AU): 0.20000000 
+
+Total Energy (AU): -0.9090152497029962 
+
+Total Kinetic Energy (AU): 0.2664023611564066 
+
+Atom Kinetic Energies (AU):
+ H 0.1332011805782033
+ H 0.1332011805782033
+ 
+Total Magnetization [X, Y, Z]: 0.0 0.0 2.2558303212262694e-16 
+
+========================= 
+
+Done
