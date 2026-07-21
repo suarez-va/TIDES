@@ -254,6 +254,7 @@ class RT_CAS_RAS:
         for a in range(self._scf.ncas):
             for b in range(self._scf.ncas):
                 corr1RDMmo[a+self._scf.ncore][b+self._scf.ncore] = self.casrdm1[a][b]
+        self._mo_occ = np.diag(corr1RDMmo)
         return(np.matmul(self.mo_to_ao,np.matmul(corr1RDMmo,self.ao_to_mo)))
     
     # fci_mod.get_corr12RDM wrapper
