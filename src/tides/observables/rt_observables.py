@@ -38,6 +38,7 @@ def _init_observables(rt_obj):
         'mo_coeff'             : False,
         'den_ao'               : False,
         'fock_ao'              : False,
+        'civec'                : False,
         }
 
     rt_obj._observables_functions = {
