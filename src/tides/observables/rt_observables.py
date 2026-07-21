@@ -62,6 +62,7 @@ def _init_observables(rt_obj):
         'mo_coeff'             : [lambda *args: None, rt_output._print_mo_coeff],
         'den_ao'               : [lambda *args: None, rt_output._print_den_ao],
         'fock_ao'              : [lambda *args: None, rt_output._print_fock_ao],
+        'civec'                : [lambda *args: None, rt_output._print_civec],
         'spin_square'          : [get_spin_square, rt_output._print_spin_square],
         }
 
