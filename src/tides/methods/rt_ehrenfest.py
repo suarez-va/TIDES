@@ -14,7 +14,7 @@ Real-time SCF + Ehrenfest
 '''
 
 class RT_Ehrenfest(RT_SCF):
-    def __init__(self, scf, timestep, max_time, filename=None, prop=None, frequency=1, chkfile=None, verbose=3, Ne_step=10, N_step=10, get_mo_coeff_print=None):
+    def __init__(self, scf, timestep, max_time, filename=None, prop=None, frequency=1, chkfile='tides.chk', verbose=3, Ne_step=10, N_step=10, get_mo_coeff_print=None):
 
         super().__init__(scf, timestep, max_time, filename, prop, frequency, None, chkfile, verbose)
 
