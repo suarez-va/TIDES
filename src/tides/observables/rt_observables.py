@@ -81,11 +81,6 @@ def _check_observables(rt_obj):
     else:
         rt_obj.hirshfeld = False
 
-    ### For whatever reason, the dip_moment call for GHF and GKS has arg name 'unit_symbol' instead of 'unit'
-    if rt_obj._scf.__class__.__name__ != 'CASCI' and rt_obj._scf.__class__.__name__ != 'CASSCF':
-        if rt_obj._scf.istype('GHF') | rt_obj._scf.istype('GKS'):
-            rt_obj._observables_functions['dipole'][0] = _temp_get_dipole
-
     # mo_occ_separate should be used for spin unrestricted when use wants to know specifically alpha vs. beta occupations
     if rt_obj.observables['mo_occ_separate']:
         assert rt_obj._scf.istype('UHF') | rt_obj._scf.istype('UKS')
@@ -265,15 +260,48 @@ def get_hirshfeld_i_charge(rt_obj):
     except Exception as e:
         raise RuntimeError(f"Hirshfeld-I calculation failed: {str(e)}")
 
-def get_dipole(rt_obj):
-    rt_obj._dipole = rt_obj._scf.dip_moment(mol=rt_obj._scf.mol, dm=rt_obj.den_ao, unit='A.U.', verbose=1)
+def _collapse_den_ao(rt_obj):
+    # Collapse spin-separated (UHF-like) or generalized (GHF/GKS-like) density
+    # matrices down to a single spatial density matrix, as used by pyscf's
+    # hf.dip_moment/quad_moment. Implemented directly against mol + den_ao
+    # (rather than calling rt_obj._scf.dip_moment/quad_moment) since CASCI/CASSCF
+    # objects don't define those methods.
+    dm = rt_obj.den_ao
+    if rt_obj.nmat == 2:
+        return dm[0] + dm[1]
+    scf = rt_obj._scf
+    if hasattr(scf, 'istype') and (scf.istype('GHF') | scf.istype('GKS')):
+        Nsp = dm.shape[-1] // 2
+        return dm[:Nsp, :Nsp] + dm[Nsp:, Nsp:]
+    return dm
 
-def _temp_get_dipole(rt_obj):
-    # Temporary fix for argument name discrepancy in GHF.dip_moment ('unit_symbol' instead of 'unit')
-    rt_obj._dipole = rt_obj._scf.dip_moment(mol=rt_obj._scf.mol, dm=rt_obj.den_ao, unit_symbol='A.U.', verbose=1)
+def get_dipole(rt_obj):
+    mol = rt_obj._scf.mol
+    dm = _collapse_den_ao(rt_obj)
+
+    charges = mol.atom_charges()
+    coords = mol.atom_coords()
+
+    with mol.with_common_orig(np.zeros(3)):
+        ao_dip = mol.intor_symmetric('int1e_r', comp=3)
+    el_dip = np.einsum('xij,ji->x', ao_dip, dm).real
+    nucl_dip = np.einsum('i,ix->x', charges, coords)
+
+    rt_obj._dipole = nucl_dip - el_dip
 
 def get_quadrupole(rt_obj):
-    rt_obj._quadrupole = rt_obj._scf.quad_moment(mol=rt_obj._scf.mol, dm=rt_obj.den_ao,unit='A.U.', verbose=1)
+    mol = rt_obj._scf.mol
+    dm = _collapse_den_ao(rt_obj)
+
+    charges = mol.atom_charges()
+    coords = mol.atom_coords()
+
+    quad_ints = mol.intor_symmetric('int1e_rr', comp=9).reshape((3, 3, -1))
+    elec_q = (quad_ints @ dm.ravel()).real
+    nuc_q = np.einsum('g,gx,gy->xy', charges, coords, coords)
+    tot_q = (nuc_q - elec_q) / 2
+
+    rt_obj._quadrupole = 3 * tot_q - np.eye(3) * np.trace(tot_q)
 
 def get_mag(rt_obj):
     Nsp = int(np.shape(rt_obj.ovlp)[0] / 2)
