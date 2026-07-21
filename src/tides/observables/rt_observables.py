@@ -150,7 +150,12 @@ def get_observables(rt_obj):
 
 def get_energy(rt_obj):
     rt_obj._energy = []
-    rt_obj._energy.append(rt_obj._scf.energy_tot(dm=rt_obj.den_ao))
+    if rt_obj._scf.__class__.__name__ != 'CASCI' and rt_obj._scf.__class__.__name__ != 'CASSCF':
+        rt_obj._energy.append(rt_obj._scf.energy_tot(dm=rt_obj.den_ao))
+    else:
+        full_energy, cas_energy = rt_obj.get_full_e()
+        rt_obj._energy.append(full_energy)
+        rt_obj._cas_energy = cas_energy
     if rt_obj.istype('RT_Ehrenfest'):
         ke = rt_obj.nuc.get_ke()
         rt_obj._energy[0] += np.sum(ke)
