@@ -38,6 +38,7 @@ def _init_observables(rt_obj):
         'mo_coeff'             : False,
         'den_ao'               : False,
         'fock_ao'              : False,
+        'civec'                : False,
         }
 
     rt_obj._observables_functions = {
@@ -62,6 +63,7 @@ def _init_observables(rt_obj):
         'mo_coeff'             : [lambda *args: None, rt_output._print_mo_coeff],
         'den_ao'               : [lambda *args: None, rt_output._print_den_ao],
         'fock_ao'              : [lambda *args: None, rt_output._print_fock_ao],
+        'civec'                : [lambda *args: None, rt_output._print_civec],
         'spin_square'          : [get_spin_square, rt_output._print_spin_square],
         }
 
@@ -150,7 +152,12 @@ def get_observables(rt_obj):
 
 def get_energy(rt_obj):
     rt_obj._energy = []
-    rt_obj._energy.append(rt_obj._scf.energy_tot(dm=rt_obj.den_ao))
+    if rt_obj._scf.__class__.__name__ != 'CASCI' and rt_obj._scf.__class__.__name__ != 'CASSCF':
+        rt_obj._energy.append(rt_obj._scf.energy_tot(dm=rt_obj.den_ao))
+    else:
+        full_energy, cas_energy = rt_obj.get_full_e()
+        rt_obj._energy.append(full_energy)
+        rt_obj._cas_energy = cas_energy
     if rt_obj.istype('RT_Ehrenfest'):
         ke = rt_obj.nuc.get_ke()
         rt_obj._energy[0] += np.sum(ke)

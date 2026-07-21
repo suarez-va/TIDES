@@ -124,9 +124,12 @@ def _print_den_ao(rt_obj):
 def _print_fock_ao(rt_obj):
     rt_obj._log.note(f'\n{"+"*25} Fock Matrix (AO Basis): {"+"*25}\n {rt_obj.fock_ao} \n{"+"*50}\n')
 
-def _print_plane_partition_charge(rt_obj):
-    charge = rt_obj._plane_partition_charge
-    rt_obj._log.note(f'Plane Partition Charges: Frag1={charge[0]:.6f}, Frag2={charge[1]:.6f}\n')
+def _print_civec(rt_obj):
+    rt_obj._log.note(f'\n{"+"*25} CI Vector: {"+"*25}\n {rt_obj._scf.ci} \n{"+"*50}\n')
+
+def _print_plane_partition_charge(rt_scf):
+    charge = rt_scf._plane_partition_charge
+    rt_scf._log.note(f'Plane Partition Charges: Frag1={charge[0]:.6f}, Frag2={charge[1]:.6f}\n')
 
 def _print_plane_partition_charge_spatial(rt_obj):
     charge = rt_obj._plane_partition_charge_spatial

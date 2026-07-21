@@ -171,6 +171,14 @@ class RT_CAS_RAS:
 
         rt_observables._init_observables(self)
 
+    def get_full_e(self,mo_coeff=None,civec=None):
+        if mo_coeff is None: mo_coeff=self._scf.mo_coeff
+        if civec is None: civec=self._scf.ci
+        h1eff, energy_core = self._scf.get_h1eff(mo_coeff)
+        eri_cas = self._scf.get_h2eff(mo_coeff)
+        e_cas = self._scf.fcisolver.energy(h1eff,eri_cas,civec,self._scf.ncas,self._scf.nelecas)
+        return energy_core+e_cas, e_cas
+
     # I don't use this, left to keep consistent with rt_scf class
     def istype(self, type_code):
         if isinstance(type_code, type):
