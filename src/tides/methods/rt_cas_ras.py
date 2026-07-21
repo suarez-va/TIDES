@@ -300,7 +300,7 @@ class RT_CAS_RAS:
     # Returns X[q,u] for the X-matrix expressed in the MO basis
     # Corresponds to eq 36 of Phys. Rev. A 88, 023402
     # In group notes, corresponds to Xqu on page 9 of td_cas/td_casscf_notes
-    def getQU(self,qn,un,dBarInv):
+    def getQUOld(self,qn,un,dBarInv):
         toReturn = self._h1e_mo[qn+self._scf.ncore,un]
         for k in range(self._scf.ncas):
             kMO = k+self._scf.ncore
@@ -321,6 +321,26 @@ class RT_CAS_RAS:
                         toAdd = toAdd - (self._h2e_mo[jMO][lMO][mMO][un]*self.casrdm2[j][l][m][k])
             toReturn = toReturn + (prefac*toAdd)
         return toReturn
+    
+    def getQU(self,dBarInv):
+        h2e_mo_term1 = self._h2e_mo[:self._scf.ncore,:self._scf.ncore,self._scf.ncore:,:self._scf.ncore]
+        term1a = 4*np.einsum('vvku->ku',h2e_mo_term1)
+        term1b = 2*np.einsum('vukv->ku',h2e_mo_term1)
+        term1 = term1a-term1b
+        h2e_mo_term2a = self._h2e_mo[self._scf.ncore:,self._scf.ncore:,self._scf.ncore:,:self._scf.ncore]
+        h2e_mo_term2b = self._h2e_mo[self._scf.ncore:,:self._scf.ncore,self._scf.ncore:,self._scf.ncore:]
+        term2a = 2*np.einsum('lmku,ml->ku',h2e_mo_term2a,self.casrdm1)
+        term2b = np.einsum('lukm,ml->ku',h2e_mo_term2b,self.casrdm1)
+        term2 = term2a-term2b
+        term3 = np.einsum('jlmu,jlmk->ku',h2e_mo_term2a,self.casrdm2)
+        h2e_mo_term4 = self._h2e_mo[self._scf.ncore:,:self._scf.ncore,:self._scf.ncore,:self._scf.ncore]
+        term4a = 2*np.einsum('vvlu,kl->ku',h2e_mo_term1,self.casrdm1)
+        term4b = np.einsum('lvvu,kl->ku',h2e_mo_term4,self.casrdm1)
+        term4 = term4a-term4b
+        termSum = term1+term2-term3-term4
+        returnAdd = np.einsum('qk,ku->qu',dBarInv,termSum)
+        hAdd = self._h1e_mo[self._scf.ncore:,:self._scf.ncore]
+        return hAdd+returnAdd
     
     def get_xMat(self):
         '''
@@ -359,6 +379,13 @@ class RT_CAS_RAS:
             dInv = eigvecrdm @ eigRdmInv @ inv(eigvecrdm)
             dBarInv = eigvecrdm @ eigDBarInv @ inv(eigvecrdm)
 
+            # Only R[ti] effects CI equations of motion
+            quMat = self.getQU(dBarInv)
+            toReturn[self._scf.ncore:self.numP][:self._scf.ncore] = np.copy(quMat)
+            toReturn[:self._scf.ncore][self._scf.ncore:self.numP] = quMat.conj().T
+            aoColForCore = np.matmul(self.mo_to_orth[:,self._scf.ncore:],quMat).T
+            aoColForAct = np.matmul(self.mo_to_orth[:,:self._scf.ncore],quMat.T).T
+
             # Eq 38 solves core equations of motion
             for u in range(self._scf.ncore):
                 uOrth = self.mo_unitvec_to_orth(u)
@@ -379,16 +406,16 @@ class RT_CAS_RAS:
                 
                 # Project into virtual space
                 aoCol = np.matmul(qMat,virt)
-                
+                aoCol = aoCol + aoColForCore[u]
+
+                '''
                 # Now add active space contributions
                 for q in range(self._scf.ncas):
                     qMO = q+self._scf.ncore
-                    qu = self.getQU(q,u,dBarInv)
+                    qu = quMat[q,u]
                     # qu represents R[ti]
                     aoCol = aoCol + (qu*self.mo_unitvec_to_orth(qMO))
-                    # Assign R[ti]=R*[it]. These are the only nonzero elements of R in the CI equations of motion.
-                    toReturn[qMO,u] = np.copy(qu)
-                    toReturn[u,qMO] = qu.conjugate()
+                '''
 
                 # Rotate to AO basis
                 colFin = np.matmul(self.orth,aoCol)
@@ -421,10 +448,13 @@ class RT_CAS_RAS:
                 
                 # Project into virtual space
                 aoCol = np.matmul(qMat,virt)
+                aoCol = aoCol + aoColForAct[q]
 
+                '''
                 # Now add core contributions
                 for u in range(self._scf.ncore):
                     aoCol = aoCol + (toReturn[u,qMO]*self.mo_unitvec_to_orth(u))
+                '''
                 
                 # Rotate to AO basis
                 colFin = np.matmul(self.orth,aoCol)
@@ -437,8 +467,8 @@ class RT_CAS_RAS:
     
     # Returns active space constant terms and 1e and 2e Hamiltonians
     # Analogous to final result on page 12 of group's dmet/dmet_original_jctc notes (cannot find equation in J. Chem. Theory Comput. 2013, 9, 3, 1428–1432)
-    def get_actH(self,x):
-        h1 = self._h1e_mo - x
+    def get_actH(self,xMat):
+        h1 = self._h1e_mo - xMat
         Econst = 2 * np.sum(np.diag(h1))
         for e in range(self._scf.ncore):
             for f in range(self._scf.ncore):
@@ -449,7 +479,8 @@ class RT_CAS_RAS:
                 for e in range(self._scf.ncore):
                     h1Mat[a,b] = h1Mat[a,b] + (2*self._h2e_mo[b+self._scf.ncore][a+self._scf.ncore][e][e]) - self._h2e_mo[b+self._scf.ncore][e][e][a+self._scf.ncore]
         h2Mat = self._h2e_mo[self._scf.ncore:self.numP,self._scf.ncore:self.numP,self._scf.ncore:self.numP,self._scf.ncore:self.numP]
-        return Econst,h1Mat,h2Mat
+        #return Econst,h1Mat,h2Mat
+        return h1Mat,h2Mat
 
     # Begin time propogation. I don't use mo_coeff_print, left to keep consistent with rt_scf class
     def kernel(self, mo_coeff_print=None):
