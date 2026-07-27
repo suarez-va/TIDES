@@ -31,6 +31,7 @@ def _init_observables(rt_obj):
         'hirsh_mag'            : False,
         'hirsh_atom_mag'       : False,
         'spin_square'          : False,
+        'ao_occ'               : False,
         'mo_occ'               : False,
         'mo_occ_separate'      : False,
         'nuclei'               : False,
@@ -56,6 +57,7 @@ def _init_observables(rt_obj):
         'mag'                  : [get_mag, rt_output._print_mag],
         'hirsh_mag'            : [get_hirshfeld_mag, rt_output._print_hirshfeld_mag],
         'hirsh_atom_mag'       : [get_hirshfeld_mag, rt_output._print_hirshfeld_mag],
+        'ao_occ'               : [get_ao_occ, rt_output._print_ao_occ],
         'mo_occ'               : [get_mo_occ, rt_output._print_mo_occ],
         'mo_occ_separate'      : [get_mo_occ_separate, rt_output._print_mo_occ_separate],
         'nuclei'               : [get_nuclei, rt_output._print_nuclei],
@@ -320,6 +322,9 @@ def get_hirshfeld_mag(rt_obj):
     rt_obj._hirshfeld_mx_atoms = mx.sum(axis=1)
     rt_obj._hirshfeld_my_atoms = my.sum(axis=1)
     rt_obj._hirshfeld_mz_atoms = mz.sum(axis=1)
+
+def get_ao_occ(rt_obj):
+    rt_obj._ao_occ = np.real(np.diag(rt_obj.den_ao@rt_obj.ovlp))
 
 def get_mo_occ(rt_obj):
     # P_mo = C+SP_aoSC
